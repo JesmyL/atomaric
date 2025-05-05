@@ -1,0 +1,11 @@
+{
+  "jsxBracketSameLine": false,
+  "printWidth": 120,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "singleAttributePerLine": true,
+  "trailingComma": "all",
+  "plugins": [],
+  "cssDeclarationSorterOrder": "concentric-css",
+  "arrowParens": "avoid"
+}
