@@ -1,0 +1,41 @@
+{
+  "name": "atomaric",
+  "description": "Manage your project state",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./build/atomaric.umd.cjs",
+  "module": "./build/atomaric.js",
+  "types": "./types/model.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/model.d.ts",
+      "require": "./build/atomaric.umd.cjs",
+      "import": "./build/atomaric.js"
+    }
+  },
+  "files": [
+    "build",
+    "types"
+  ],
+  "keywords": [
+    "react",
+    "state",
+    "manager"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/md5": "^2.3.5",
+    "@types/node": "^22.15.1",
+    "@types/react": "^19.1.2",
+    "vite": "^6.3.1",
+    "react": "^19.1.0",
+    "vite-plugin-eslint": "^1.8.1"
+  },
+  "dependencies": {
+    "typescript": "~5.7.2"
+  }
+}
