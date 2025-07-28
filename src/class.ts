@@ -6,13 +6,13 @@ export class Atom<Value> {
   private readonly save: (val: Value) => void = () => {};
   private readonly invokeSubscriber = (sub: Sunscriber<Value>) => sub(this.value);
 
-  constructor(defaultValue: Value, storeKey: `${string}${string}:${string}${string}` | undefined) {
+  constructor(private _defaultValue: Value, storeKey: `${string}${string}:${string}${string}` | undefined) {
     if (storeKey !== undefined) {
       const key = `atom/${storeKey}`;
 
-      this.value = key in localStorage ? JSON.parse(localStorage[key]) : defaultValue;
+      this.value = key in localStorage ? JSON.parse(localStorage[key]) : _defaultValue;
       this.save = value => {
-        if (value === defaultValue) {
+        if (value === _defaultValue) {
           this.reset();
           return;
         }
@@ -21,18 +21,22 @@ export class Atom<Value> {
 
       this.reset = () => {
         delete localStorage[key];
-        this.set(defaultValue, true);
+        this.set(_defaultValue, true);
       };
     } else {
-      this.value = defaultValue;
+      this.value = _defaultValue;
       this.reset = () => {
-        this.set(defaultValue, true);
+        this.set(_defaultValue, true);
         this.subscribers.forEach(this.invokeSubscriber, this);
       };
     }
 
-    if (typeof defaultValue !== 'boolean') this.toggle = () => {};
-    if (typeof defaultValue !== 'number') this.inkrement = () => {};
+    if (typeof _defaultValue !== 'boolean') this.toggle = () => {};
+    if (typeof _defaultValue !== 'number') this.inkrement = () => {};
+  }
+
+  get defaultValue() {
+    return this._defaultValue;
   }
 
   readonly get = () => this.value;

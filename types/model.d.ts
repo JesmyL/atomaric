@@ -3,6 +3,7 @@ type Sunscriber<Value> = (value: Value) => void;
 export class Atom<Value> {
   constructor(defaultValue: Value, storeKey: `${string}${string}:${string}${string}` | undefined);
 
+  readonly defaultValue: Value;
   readonly get: () => Value;
   readonly reset: () => void;
   readonly toggle: () => void;
