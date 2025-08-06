@@ -1,38 +1,77 @@
-type Sunscriber<Value> = (value: Value) => void;
+import { AtomOptions, AtomStoreKey } from '../types/model';
+
+type Subscriber<Value> = (value: Value) => void;
+
+const updaters: Record<string, (event: StorageEvent) => void> = {};
+
+window.addEventListener('storage', event => {
+  if (event.key === null || updaters[event.key] === undefined) return;
+  updaters[event.key](event);
+});
 
 export class Atom<Value> {
   private value: Value;
-  private readonly subscribers = new Set<Sunscriber<Value>>();
+  private readonly subscribers = new Set<Subscriber<Value>>();
   private readonly save: (val: Value) => void = () => {};
-  private readonly invokeSubscriber = (sub: Sunscriber<Value>) => sub(this.value);
+  private readonly invokeSubscriber = (sub: Subscriber<Value>) => sub(this.value);
 
-  constructor(private _defaultValue: Value, storeKey: `${string}${string}:${string}${string}` | undefined) {
-    if (storeKey !== undefined) {
-      const key = `atom/${storeKey}`;
+  constructor(private _defaultValue: Value, storeKeyOrOptons: AtomStoreKey | undefined | AtomOptions) {
+    this.value = _defaultValue;
+    if (typeof _defaultValue !== 'boolean') this.toggle = () => {};
+    if (typeof _defaultValue !== 'number') this.inkrement = () => {};
 
-      this.value = key in localStorage ? JSON.parse(localStorage[key]) : _defaultValue;
-      this.save = value => {
-        if (value === _defaultValue) {
+    this.reset = () => {
+      this.set(_defaultValue, true);
+      this.subscribers.forEach(this.invokeSubscriber, this);
+    };
+
+    if (storeKeyOrOptons == null) return;
+
+    let storeKey = null;
+    let warnOnDuplicateStoreKey = true;
+    let listenStorageChanges = true;
+
+    if (typeof storeKeyOrOptons === 'string') {
+      storeKey = storeKeyOrOptons;
+    } else if (storeKeyOrOptons.storeKey !== undefined) {
+      warnOnDuplicateStoreKey = storeKeyOrOptons.warnOnDuplicateStoreKey ?? true;
+      listenStorageChanges = storeKeyOrOptons.listenStorageChanges ?? true;
+      storeKey = storeKeyOrOptons.storeKey;
+    }
+
+    if (storeKey === null) return;
+
+    const key = `atom/${storeKey}`;
+
+    this.value = key in localStorage ? JSON.parse(localStorage[key]) : _defaultValue;
+    this.save = value => {
+      if (value === _defaultValue) {
+        this.reset();
+        return;
+      }
+      localStorage[key] = JSON.stringify(value);
+    };
+
+    this.reset = () => {
+      delete localStorage[key];
+      this.set(_defaultValue, true);
+    };
+
+    if (warnOnDuplicateStoreKey && updaters[key] !== undefined) console.warn('Duplicate Atom key', storeKeyOrOptons);
+
+    if (listenStorageChanges)
+      updaters[key] = event => {
+        if (event.newValue === null) {
           this.reset();
           return;
         }
-        localStorage[key] = JSON.stringify(value);
-      };
 
-      this.reset = () => {
-        delete localStorage[key];
-        this.set(_defaultValue, true);
+        try {
+          this.set(JSON.parse(event.newValue));
+        } catch (_e) {
+          console.warn('Invalid json value', event.newValue);
+        }
       };
-    } else {
-      this.value = _defaultValue;
-      this.reset = () => {
-        this.set(_defaultValue, true);
-        this.subscribers.forEach(this.invokeSubscriber, this);
-      };
-    }
-
-    if (typeof _defaultValue !== 'boolean') this.toggle = () => {};
-    if (typeof _defaultValue !== 'number') this.inkrement = () => {};
   }
 
   get defaultValue() {
@@ -44,7 +83,7 @@ export class Atom<Value> {
   readonly toggle = () => this.set(!this.value as never);
   readonly inkrement = (delta: number) => this.set(((this.value as number) + delta) as never);
 
-  readonly subscribe = (sub: Sunscriber<Value>) => {
+  readonly subscribe = (sub: Subscriber<Value>) => {
     this.subscribers.add(sub);
     return () => {
       this.subscribers.delete(sub);

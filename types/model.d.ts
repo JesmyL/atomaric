@@ -1,7 +1,17 @@
 type Sunscriber<Value> = (value: Value) => void;
 
+export type AtomStoreKey = `${string}${string}:${string}${string}`;
+
+export type AtomOptions = {
+  storeKey?: AtomStoreKey;
+  /** **default: true** */
+  warnOnDuplicateStoreKey?: boolean;
+  /** **default: true** */
+  listenStorageChanges?: boolean;
+};
+
 export class Atom<Value> {
-  constructor(defaultValue: Value, storeKey: `${string}${string}:${string}${string}` | undefined);
+  constructor(defaultValue: Value, storeKey: AtomStoreKey | undefined | AtomOptions);
 
   readonly defaultValue: Value;
   readonly get: () => Value;
@@ -22,4 +32,4 @@ export function useAtom<Value>(atom: Atom<Value>): [Value, (typeof atom)['set']]
 
 export function atom<Value>(value: Value, storeKey?: `${string}${string}:${string}${string}`): Atom<Value>;
 
-export function registerReactUseSyncExternalStoreHookFunc(hook: typeof useSyncExternalStore): void;
+export function registerReactHooks(hooks: { useSyncExternalStore: typeof useSyncExternalStore }): void;
