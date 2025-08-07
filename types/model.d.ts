@@ -11,7 +11,7 @@ export type AtomOptions = {
 };
 
 export class Atom<Value> {
-  constructor(defaultValue: Value, storeKey: AtomStoreKey | undefined | AtomOptions);
+  constructor(defaultValue: Value, storeKeyOrOptions: AtomStoreKey | undefined | AtomOptions);
 
   readonly defaultValue: Value;
   readonly get: () => Value;
@@ -30,6 +30,9 @@ export function useAtomInkrement(atom: Atom<number>): (typeof atom)['inkrement']
 
 export function useAtom<Value>(atom: Atom<Value>): [Value, (typeof atom)['set']];
 
-export function atom<Value>(value: Value, storeKey?: `${string}${string}:${string}${string}`): Atom<Value>;
+export function atom<Value>(
+  value: Value,
+  storeKeyOrOptions?: `${string}${string}:${string}${string}` | AtomOptions,
+): Atom<Value>;
 
 export function registerReactHooks(hooks: { useSyncExternalStore: typeof useSyncExternalStore }): void;

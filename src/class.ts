@@ -15,7 +15,7 @@ export class Atom<Value> {
   private readonly save: (val: Value) => void = () => {};
   private readonly invokeSubscriber = (sub: Subscriber<Value>) => sub(this.value);
 
-  constructor(private _defaultValue: Value, storeKeyOrOptons: AtomStoreKey | undefined | AtomOptions) {
+  constructor(private _defaultValue: Value, storeKeyOrOptions: AtomStoreKey | undefined | AtomOptions) {
     this.value = _defaultValue;
     if (typeof _defaultValue !== 'boolean') this.toggle = () => {};
     if (typeof _defaultValue !== 'number') this.inkrement = () => {};
@@ -25,18 +25,18 @@ export class Atom<Value> {
       this.subscribers.forEach(this.invokeSubscriber, this);
     };
 
-    if (storeKeyOrOptons == null) return;
+    if (storeKeyOrOptions == null) return;
 
     let storeKey = null;
     let warnOnDuplicateStoreKey = true;
     let listenStorageChanges = true;
 
-    if (typeof storeKeyOrOptons === 'string') {
-      storeKey = storeKeyOrOptons;
-    } else if (storeKeyOrOptons.storeKey !== undefined) {
-      warnOnDuplicateStoreKey = storeKeyOrOptons.warnOnDuplicateStoreKey ?? true;
-      listenStorageChanges = storeKeyOrOptons.listenStorageChanges ?? true;
-      storeKey = storeKeyOrOptons.storeKey;
+    if (typeof storeKeyOrOptions === 'string') {
+      storeKey = storeKeyOrOptions;
+    } else if (storeKeyOrOptions.storeKey !== undefined) {
+      warnOnDuplicateStoreKey = storeKeyOrOptions.warnOnDuplicateStoreKey ?? true;
+      listenStorageChanges = storeKeyOrOptions.listenStorageChanges ?? true;
+      storeKey = storeKeyOrOptions.storeKey;
     }
 
     if (storeKey === null) return;
@@ -57,7 +57,7 @@ export class Atom<Value> {
       this.set(_defaultValue, true);
     };
 
-    if (warnOnDuplicateStoreKey && updaters[key] !== undefined) console.warn('Duplicate Atom key', storeKeyOrOptons);
+    if (warnOnDuplicateStoreKey && updaters[key] !== undefined) console.warn('Duplicate Atom key', storeKeyOrOptions);
 
     if (listenStorageChanges)
       updaters[key] = event => {
