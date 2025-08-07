@@ -35,4 +35,4 @@ export function atom<Value>(
   storeKeyOrOptions?: `${string}${string}:${string}${string}` | AtomOptions,
 ): Atom<Value>;
 
-export function registerReactHooks(hooks: { useSyncExternalStore: typeof useSyncExternalStore }): void;
+export function configureAtomaric(hooks: { useSyncExternalStore: typeof useSyncExternalStore }): void;

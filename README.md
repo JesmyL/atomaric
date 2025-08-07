@@ -6,14 +6,24 @@ npm install atomaric
 
 ### usage
 
-```ts
-import { atom, useAtomValue } from 'atomaric';
+```tsx
+import { atom, useAtom, configureAtomaric } from 'atomaric';
+import { useSyncExternalStore } from 'react';
 
-const nameAtom = atom('World');
+configureAtomaric({ useSyncExternalStore }); // do this before all
+
+const nameAtom = atom(
+  'World',
+  'greats:name', // optional locakStorage key
+);
 
 function App() {
-  const [name, setIsOpen] = useAtomValue(nameAtom);
+  const [name, setIsOpen] = useAtom(nameAtom);
 
-  return <div onClick={() => setIsOpen(isOpen => (name === 'World' ? 'Man' : 'World'))}>Hello, {name}</div>;
+  return (
+    <div onClick={() => setIsOpen(isOpen => (name === 'World' ? 'Man' : 'World'))}>
+      Hello <span className="color-accent">{name}</span>
+    </div>
+  );
 }
 ```

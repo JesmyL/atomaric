@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import {
-  registerReactHooks as registerReactHooksType,
+  configureAtomaric as configureAtomaricType,
   useAtomGet as useAtomGetType,
   useAtomInkrement as useAtomInkrementType,
   useAtomSet as useAtomSetType,
@@ -10,11 +10,10 @@ import {
 import { Atom } from './class';
 
 let useSyncExtStore = (() => {
-  throw 'you meed pass react useSyncExternalStore hook func in registerReactHooks() before all actions';
+  throw 'call configureAtomaric() before all!';
 }) as typeof useSyncExternalStore;
 
-export const registerReactHooks: typeof registerReactHooksType = hooks =>
-  (useSyncExtStore = hooks.useSyncExternalStore);
+export const configureAtomaric: typeof configureAtomaricType = hooks => (useSyncExtStore = hooks.useSyncExternalStore);
 
 export const useAtomValue: typeof useAtomValueType = atom => {
   return useSyncExtStore(atom.subscribe, atom.get);
