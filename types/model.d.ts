@@ -44,9 +44,8 @@ export function useAtomInkrement(atom: Atom<number>): (typeof atom)['inkrement']
 
 export function useAtom<Value>(atom: Atom<Value>): [Value, (typeof atom)['set']];
 
-export function atom<Value>(
-  value: Value,
-  storeKeyOrOptions?: `${string}${string}:${string}${string}` | AtomOptions<Value>,
-): Atom<Value>;
+export type StoreKeyOrOptions<Value> = `${string}${string}:${string}${string}` | AtomOptions<Value>;
+
+export function atom<Value>(value: Value, storeKeyOrOptions?: StoreKeyOrOptions<Value>): Atom<Value>;
 
 export function configureAtomaric(hooks: { useSyncExternalStore: typeof useSyncExternalStore }): void;

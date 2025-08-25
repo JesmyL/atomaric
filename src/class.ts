@@ -31,8 +31,19 @@ export class Atom<Value> {
     let storeKey = null;
     let warnOnDuplicateStoreKey = true;
     let listenStorageChanges = true;
-    let parseValue: AtomOptions<Value>['parseValue'] = strValue => JSON.parse(strValue);
-    let stringifyValue: AtomOptions<Value>['stringifyValue'] = value => JSON.stringify(value);
+
+    let parseValue: AtomOptions<Value>['parseValue'] =
+      _defaultValue instanceof Set ? strValue => new Set(JSON.parse(strValue)) : strValue => JSON.parse(strValue);
+
+    let stringifyValue: AtomOptions<Value>['stringifyValue'] =
+      _defaultValue instanceof Set
+        ? val => {
+            if (val instanceof Set) return JSON.stringify(Array.from(val));
+
+            console.error(val);
+            throw 'The value is not Set instance';
+          }
+        : value => JSON.stringify(value);
 
     if (typeof storeKeyOrOptions === 'string') {
       storeKey = storeKeyOrOptions;
@@ -48,13 +59,18 @@ export class Atom<Value> {
     if (storeKey === null) return;
 
     const key = `atom/${storeKey}`;
+    let isInactualValue = true;
 
     this.get = () => {
-      try {
-        this.value = key in localStorage ? parseValue(localStorage[key]) : _defaultValue;
-        this.get = () => this.value;
-      } catch (e) {
-        console.warn('Invalid json value', localStorage[key]);
+      this.get = () => this.value;
+
+      if (isInactualValue) {
+        isInactualValue = false;
+        try {
+          this.value = key in localStorage ? parseValue(localStorage[key]) : _defaultValue;
+        } catch (e) {
+          console.warn('Invalid json value', localStorage[key]);
+        }
       }
 
       return this.value;
@@ -73,7 +89,11 @@ export class Atom<Value> {
       this.set(_defaultValue, true);
     };
 
-    if (warnOnDuplicateStoreKey && updaters[key] !== undefined) console.warn('Duplicate Atom key', storeKeyOrOptions);
+    if (warnOnDuplicateStoreKey && updaters[key] !== undefined)
+      console.warn(
+        'Duplicate Atom key',
+        typeof storeKeyOrOptions === 'string' ? storeKeyOrOptions : storeKeyOrOptions.storeKey,
+      );
 
     if (listenStorageChanges)
       updaters[key] = event => {
