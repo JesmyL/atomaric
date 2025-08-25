@@ -1,4 +1,4 @@
-import { AtomOptions, AtomStoreKey } from '../types/model';
+import { AtomOptions, AtomSetDeferredMethod, AtomSetMethod, AtomStoreKey, AtomSubscribeMethod } from '../types/model';
 
 type Subscriber<Value> = (value: Value) => void;
 
@@ -11,6 +11,7 @@ window.addEventListener('storage', event => {
 
 export class Atom<Value> {
   private value: Value;
+  private debounceTimeout?: ReturnType<typeof setTimeout>;
   private readonly subscribers = new Set<Subscriber<Value>>();
   private readonly save: (val: Value) => void = () => {};
   private readonly invokeSubscriber = (sub: Subscriber<Value>) => sub(this.value);
@@ -83,14 +84,14 @@ export class Atom<Value> {
   readonly toggle = () => this.set(!this.value as never);
   readonly inkrement = (delta: number) => this.set(((this.value as number) + delta) as never);
 
-  readonly subscribe = (sub: Subscriber<Value>) => {
+  readonly subscribe: AtomSubscribeMethod<Value> = sub => {
     this.subscribers.add(sub);
     return () => {
       this.subscribers.delete(sub);
     };
   };
 
-  readonly set = (value: Value | ((prev: Value) => Value), isPreventSave?: boolean) => {
+  readonly set: AtomSetMethod<Value> = (value, isPreventSave) => {
     const val = typeof value === 'function' ? (value as (value: Value) => Value)(this.value) : value;
     if (val === this.value || val === undefined || (typeof val === 'number' && isNaN(val))) return;
 
@@ -98,5 +99,21 @@ export class Atom<Value> {
     this.subscribers.forEach(this.invokeSubscriber, this);
 
     if (isPreventSave !== true) this.save(val);
+  };
+
+  readonly setDeferred: AtomSetDeferredMethod<Value> = (
+    value,
+    debounceMs = 500,
+    isPreventSave,
+    isInitInvoke = true,
+  ) => {
+    if (isInitInvoke && this.debounceTimeout === undefined) this.set(value, isPreventSave);
+
+    clearTimeout(this.debounceTimeout);
+
+    this.debounceTimeout = setTimeout(() => {
+      this.set(value, isPreventSave);
+      delete this.debounceTimeout;
+    }, debounceMs);
   };
 }

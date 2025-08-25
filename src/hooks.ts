@@ -3,6 +3,7 @@ import {
   configureAtomaric as configureAtomaricType,
   useAtomGet as useAtomGetType,
   useAtomInkrement as useAtomInkrementType,
+  useAtomSetDeferred as useAtomSetDeferredType,
   useAtomSet as useAtomSetType,
   useAtomToggle as useAtomToggleType,
   useAtomValue as useAtomValueType,
@@ -20,6 +21,7 @@ export const useAtomValue: typeof useAtomValueType = atom => {
 };
 
 export const useAtomSet: typeof useAtomSetType = atom => atom.set;
+export const useAtomSetDeferred: typeof useAtomSetDeferredType = atom => atom.setDeferred;
 export const useAtomGet: typeof useAtomGetType = atom => atom.get;
 export const useAtomToggle: typeof useAtomToggleType = atom => atom.toggle;
 export const useAtomInkrement: typeof useAtomInkrementType = atom => atom.inkrement;

@@ -1,10 +1,10 @@
-## 🕹️Installation and usage
+## 🕹️Installation
 
 ```sh
 npm install atomaric
 ```
 
-### usage
+## usage
 
 ```tsx
 import { atom, useAtom, configureAtomaric } from 'atomaric';
@@ -14,7 +14,7 @@ configureAtomaric({ useSyncExternalStore }); // do this before all
 
 const nameAtom = atom(
   'World',
-  'greats:name', // optional locakStorage key
+  'greats:name', // optional localStorage key
 );
 
 function App() {
