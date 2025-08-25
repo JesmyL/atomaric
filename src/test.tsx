@@ -4,7 +4,7 @@ import { atom, configureAtomaric, useAtomValue } from './hooks';
 
 configureAtomaric({ useSyncExternalStore });
 
-createRoot(document.getElementById('root')).render(
+createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>,
