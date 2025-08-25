@@ -16,7 +16,7 @@ export class Atom<Value> {
   private readonly save: (val: Value) => void = () => {};
   private readonly invokeSubscriber = (sub: Subscriber<Value>) => sub(this.value);
 
-  constructor(private _defaultValue: Value, storeKeyOrOptions: AtomStoreKey | undefined | AtomOptions) {
+  constructor(private _defaultValue: Value, storeKeyOrOptions: AtomStoreKey | undefined | AtomOptions<Value>) {
     this.value = _defaultValue;
     if (typeof _defaultValue !== 'boolean') this.toggle = () => {};
     if (typeof _defaultValue !== 'number') this.inkrement = () => {};
@@ -31,6 +31,8 @@ export class Atom<Value> {
     let storeKey = null;
     let warnOnDuplicateStoreKey = true;
     let listenStorageChanges = true;
+    let parseValue: AtomOptions<Value>['parseValue'] = strValue => JSON.parse(strValue);
+    let stringifyValue: AtomOptions<Value>['stringifyValue'] = value => JSON.stringify(value);
 
     if (typeof storeKeyOrOptions === 'string') {
       storeKey = storeKeyOrOptions;
@@ -38,19 +40,32 @@ export class Atom<Value> {
       warnOnDuplicateStoreKey = storeKeyOrOptions.warnOnDuplicateStoreKey ?? true;
       listenStorageChanges = storeKeyOrOptions.listenStorageChanges ?? true;
       storeKey = storeKeyOrOptions.storeKey;
+
+      parseValue = storeKeyOrOptions.parseValue ?? parseValue;
+      stringifyValue = storeKeyOrOptions.stringifyValue ?? stringifyValue;
     }
 
     if (storeKey === null) return;
 
     const key = `atom/${storeKey}`;
 
-    this.value = key in localStorage ? JSON.parse(localStorage[key]) : _defaultValue;
+    this.get = () => {
+      try {
+        this.value = key in localStorage ? parseValue(localStorage[key]) : _defaultValue;
+        this.get = () => this.value;
+      } catch (e) {
+        console.warn('Invalid json value', localStorage[key]);
+      }
+
+      return this.value;
+    };
+
     this.save = value => {
       if (value === _defaultValue) {
         this.reset();
         return;
       }
-      localStorage[key] = JSON.stringify(value);
+      localStorage[key] = stringifyValue(value);
     };
 
     this.reset = () => {
@@ -68,7 +83,7 @@ export class Atom<Value> {
         }
 
         try {
-          this.set(JSON.parse(event.newValue));
+          this.set(parseValue(event.newValue));
         } catch (_e) {
           console.warn('Invalid json value', event.newValue);
         }
@@ -79,7 +94,7 @@ export class Atom<Value> {
     return this._defaultValue;
   }
 
-  readonly get = () => this.value;
+  get = () => this.value;
   readonly reset: () => void;
   readonly toggle = () => this.set(!this.value as never);
   readonly inkrement = (delta: number) => this.set(((this.value as number) + delta) as never);

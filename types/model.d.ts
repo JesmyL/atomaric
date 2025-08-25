@@ -2,12 +2,14 @@ type Sunscriber<Value> = (value: Value) => void;
 
 export type AtomStoreKey = `${string}${string}:${string}${string}`;
 
-export type AtomOptions = {
+export type AtomOptions<Value> = {
   storeKey?: AtomStoreKey;
   /** **default: true** */
   warnOnDuplicateStoreKey?: boolean;
   /** **default: true** */
   listenStorageChanges?: boolean;
+  parseValue?: (stringifiedValue: string) => Value;
+  stringifyValue?: (value: Value) => string;
 };
 
 export type AtomSetMethod<Value> = (value: Value | ((prev: Value) => Value), isPreventSave?: boolean) => void;
@@ -21,7 +23,7 @@ export type AtomSetDeferredMethod<Value> = (
 export type AtomSubscribeMethod<Value> = (subscriber: Sunscriber<Value>) => () => void;
 
 export class Atom<Value> {
-  constructor(defaultValue: Value, storeKeyOrOptions: AtomStoreKey | undefined | AtomOptions);
+  constructor(defaultValue: Value, storeKeyOrOptions: AtomStoreKey | undefined | AtomOptions<Value>);
 
   readonly defaultValue: Value;
   readonly get: () => Value;
@@ -44,7 +46,7 @@ export function useAtom<Value>(atom: Atom<Value>): [Value, (typeof atom)['set']]
 
 export function atom<Value>(
   value: Value,
-  storeKeyOrOptions?: `${string}${string}:${string}${string}` | AtomOptions,
+  storeKeyOrOptions?: `${string}${string}:${string}${string}` | AtomOptions<Value>,
 ): Atom<Value>;
 
 export function configureAtomaric(hooks: { useSyncExternalStore: typeof useSyncExternalStore }): void;
