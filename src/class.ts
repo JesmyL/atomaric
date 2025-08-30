@@ -31,6 +31,7 @@ export class Atom<Value> {
     let storeKey = null;
     let warnOnDuplicateStoreKey = true;
     let listenStorageChanges = true;
+    let isUnchangable = false;
 
     let parseValue: AtomOptions<Value>['parseValue'] =
       _defaultValue instanceof Set ? strValue => new Set(JSON.parse(strValue)) : strValue => JSON.parse(strValue);
@@ -54,6 +55,7 @@ export class Atom<Value> {
 
       parseValue = storeKeyOrOptions.parseValue ?? parseValue;
       stringifyValue = storeKeyOrOptions.stringifyValue ?? stringifyValue;
+      isUnchangable = storeKeyOrOptions.unchangable ?? isUnchangable;
     }
 
     if (storeKey === null) return;
@@ -96,18 +98,20 @@ export class Atom<Value> {
       );
 
     if (listenStorageChanges)
-      updaters[key] = event => {
-        if (event.newValue === null) {
-          this.reset();
-          return;
-        }
+      updaters[key] = isUnchangable
+        ? () => (localStorage[key] = stringifyValue(this.value))
+        : event => {
+            if (event.newValue === null) {
+              this.reset();
+              return;
+            }
 
-        try {
-          this.set(parseValue(event.newValue));
-        } catch (_e) {
-          console.warn('Invalid json value', event.newValue);
-        }
-      };
+            try {
+              this.set(parseValue(event.newValue));
+            } catch (_e) {
+              console.warn('Invalid json value', event.newValue);
+            }
+          };
   }
 
   get defaultValue() {

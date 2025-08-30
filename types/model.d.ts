@@ -3,13 +3,22 @@ type Sunscriber<Value> = (value: Value) => void;
 export type AtomStoreKey = `${string}${string}:${string}${string}`;
 
 export type AtomOptions<Value> = {
-  storeKey?: AtomStoreKey;
+  /** save in localStorage by this key */
+  storeKey: AtomStoreKey;
   /** **default: true** */
   warnOnDuplicateStoreKey?: boolean;
-  /** **default: true** */
+  /** will update value if localStorage value is changed
+   * **default: true**
+   */
   listenStorageChanges?: boolean;
+  /** map localStorage string value to Value */
   parseValue?: (stringifiedValue: string) => Value;
+  /** map Value to localStorage string value */
   stringifyValue?: (value: Value) => string;
+  /** can not to change localStorage value in dev tools
+   * **default: false**
+   */
+  unchangable?: boolean;
 };
 
 export type AtomSetMethod<Value> = (value: Value | ((prev: Value) => Value), isPreventSave?: boolean) => void;

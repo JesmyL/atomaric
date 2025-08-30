@@ -10,7 +10,10 @@ createRoot(document.getElementById('root')!).render(
   </React.StrictMode>,
 );
 
-const testAtom = atom(new Set<string>(), 'test:set');
+const testAtom = atom(new Set<string>(), {
+  storeKey: 'test:set',
+  unchangable: true,
+});
 
 function App() {
   const test = useAtomValue(testAtom);
