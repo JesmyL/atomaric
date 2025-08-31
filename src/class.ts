@@ -2,13 +2,6 @@ import { AtomOptions, AtomSetDeferredMethod, AtomSetMethod, AtomStoreKey, AtomSu
 
 type Subscriber<Value> = (value: Value) => void;
 
-const updaters: Record<string, (event: StorageEvent) => void> = {};
-
-window.addEventListener('storage', event => {
-  if (event.key === null || updaters[event.key] === undefined) return;
-  updaters[event.key](event);
-});
-
 export class Atom<Value> {
   private value: Value;
   private debounceTimeout?: ReturnType<typeof setTimeout>;
@@ -91,27 +84,42 @@ export class Atom<Value> {
       this.set(_defaultValue, true);
     };
 
-    if (warnOnDuplicateStoreKey && updaters[key] !== undefined)
+    if (warnOnDuplicateStoreKey && methods[key] !== undefined)
       console.warn(
         'Duplicate Atom key',
         typeof storeKeyOrOptions === 'string' ? storeKeyOrOptions : storeKeyOrOptions.storeKey,
       );
 
-    if (listenStorageChanges)
-      updaters[key] = isUnchangable
-        ? () => (localStorage[key] = stringifyValue(this.value))
-        : event => {
-            if (event.newValue === null) {
-              this.reset();
-              return;
-            }
+    methods[key] = {};
 
-            try {
-              this.set(parseValue(event.newValue));
-            } catch (_e) {
-              console.warn('Invalid json value', event.newValue);
-            }
-          };
+    if (listenStorageChanges) {
+      if (isUnchangable) {
+        let timeout: ReturnType<typeof setTimeout>;
+        let isCantUpdate = false;
+
+        methods[key].unchangable = () => {
+          if (isCantUpdate) return;
+          isCantUpdate = true;
+          localStorage[key] = stringifyValue(this.value);
+          timeout = setTimeout(() => (isCantUpdate = false), 100);
+        };
+
+        startUnchangableChangesDetection();
+      } else {
+        methods[key].updatable = event => {
+          if (event.newValue === null) {
+            this.reset();
+            return;
+          }
+
+          try {
+            this.set(parseValue(event.newValue));
+          } catch (_e) {
+            console.warn('Invalid json value', event.newValue);
+          }
+        };
+      }
+    }
   }
 
   get defaultValue() {
@@ -156,3 +164,66 @@ export class Atom<Value> {
     }, debounceMs);
   };
 }
+
+const localStorage = window.localStorage;
+const methods: Partial<Record<string, { unchangable?: () => void; updatable?: (event: StorageEvent) => void }>> = {};
+
+window.addEventListener('storage', event => {
+  if (event.key === null) return;
+  methods[event.key]?.unchangable?.();
+  methods[event.key]?.updatable?.(event);
+});
+
+const setItem = localStorage.setItem.bind(localStorage);
+const removeItem = localStorage.removeItem.bind(localStorage);
+
+localStorage.setItem = (key, value) => {
+  if (methods[key]?.unchangable !== undefined) return;
+  setItem.call(localStorage, key, value);
+};
+localStorage.removeItem = key => {
+  if (methods[key]?.unchangable !== undefined) return;
+  removeItem.call(localStorage, key);
+};
+
+const startUnchangableChangesDetection = (() => {
+  let isWasStarted = false;
+  return () => {
+    if (isWasStarted) return;
+    isWasStarted = true;
+    let checkInterval: ReturnType<typeof setInterval>;
+
+    const listen = () => {
+      let prevLen = localStorage.length;
+      const check = () => {
+        if (prevLen === localStorage.length) return;
+        document.body.innerHTML += `${prevLen}/${localStorage.length}; `;
+        prevLen = localStorage.length;
+
+        Object.keys(methods).forEach(key => {
+          if (key in localStorage) return;
+          methods[key]?.unchangable?.();
+        });
+      };
+      check();
+      checkInterval = setInterval(check, 100);
+    };
+
+    window.addEventListener('focus', () => clearInterval(checkInterval));
+    window.addEventListener('blur', listen);
+  };
+})();
+
+(() => {
+  const forEach = (key: string) => {
+    if (key in localStorage) return;
+    methods[key]?.unchangable?.();
+  };
+  const then = () => Object.keys(methods).forEach(forEach);
+  Object.defineProperty(window, 'localStorage', {
+    get: () => {
+      Promise.resolve().then(then);
+      return localStorage;
+    },
+  });
+})();
