@@ -1,15 +1,49 @@
-import { AtomOptions, AtomSetDeferredMethod, AtomSetMethod, AtomStoreKey, AtomSubscribeMethod } from '../types/model';
+import {
+  AtomOptions,
+  AtomSetDeferredMethod,
+  AtomSetMethod,
+  AtomStoreKey,
+  AtomSubscribeMethod,
+  SetActions,
+} from '../types/model';
 
 type Subscriber<Value> = (value: Value) => void;
 
-export class Atom<Value> {
+export class Atom<Value, Actions extends Record<string, Function>> {
   private value: Value;
   private debounceTimeout?: ReturnType<typeof setTimeout>;
   private readonly subscribers = new Set<Subscriber<Value>>();
   private readonly save: (val: Value) => void = () => {};
   private readonly invokeSubscriber = (sub: Subscriber<Value>) => sub(this.value);
+  do = {} as Actions & (Value extends Set<infer V> ? SetActions<V> : {});
 
-  constructor(private _defaultValue: Value, storeKeyOrOptions: AtomStoreKey | undefined | AtomOptions<Value>) {
+  constructor(private _defaultValue: Value, storeKeyOrOptions: AtomStoreKey | undefined | AtomOptions<Value, Actions>) {
+    if (typeof storeKeyOrOptions === 'object') {
+      const actions = 'do' in storeKeyOrOptions ? storeKeyOrOptions.do(this.get, this.set) : {};
+      this.do =
+        _defaultValue instanceof Set
+          ? {
+              ...actions,
+              add: value => {
+                const newSet = new Set(this.value as never);
+                const result = newSet.add(value);
+                this.set(newSet as never);
+
+                return result;
+              },
+              delete: value => {
+                const newSet = new Set(this.value as never);
+                const result = newSet.delete(value);
+                this.set(newSet as never);
+                return result;
+              },
+              clear: () => {
+                this.set(new Set() as never);
+              },
+            }
+          : (actions as any);
+    }
+
     this.value = _defaultValue;
     if (typeof _defaultValue !== 'boolean') this.toggle = () => {};
     if (typeof _defaultValue !== 'number') this.inkrement = () => {};
@@ -26,10 +60,10 @@ export class Atom<Value> {
     let listenStorageChanges = true;
     let isUnchangable = false;
 
-    let parseValue: AtomOptions<Value>['parseValue'] =
+    let parseValue: AtomOptions<Value, Actions>['parseValue'] =
       _defaultValue instanceof Set ? strValue => new Set(JSON.parse(strValue)) : strValue => JSON.parse(strValue);
 
-    let stringifyValue: AtomOptions<Value>['stringifyValue'] =
+    let stringifyValue: AtomOptions<Value, Actions>['stringifyValue'] =
       _defaultValue instanceof Set
         ? val => {
             if (val instanceof Set) return JSON.stringify(Array.from(val));
@@ -41,7 +75,7 @@ export class Atom<Value> {
 
     if (typeof storeKeyOrOptions === 'string') {
       storeKey = storeKeyOrOptions;
-    } else if (storeKeyOrOptions.storeKey !== undefined) {
+    } else if ('storeKey' in storeKeyOrOptions) {
       warnOnDuplicateStoreKey = storeKeyOrOptions.warnOnDuplicateStoreKey ?? true;
       listenStorageChanges = storeKeyOrOptions.listenStorageChanges ?? true;
       storeKey = storeKeyOrOptions.storeKey;
@@ -84,11 +118,7 @@ export class Atom<Value> {
       this.set(_defaultValue, true);
     };
 
-    if (warnOnDuplicateStoreKey && methods[key] !== undefined)
-      console.warn(
-        'Duplicate Atom key',
-        typeof storeKeyOrOptions === 'string' ? storeKeyOrOptions : storeKeyOrOptions.storeKey,
-      );
+    if (warnOnDuplicateStoreKey && methods[key] !== undefined) console.warn('Duplicate Atom key', storeKey);
 
     methods[key] = {};
 
@@ -197,7 +227,6 @@ const startUnchangableChangesDetection = (() => {
       let prevLen = localStorage.length;
       const check = () => {
         if (prevLen === localStorage.length) return;
-        document.body.innerHTML += `${prevLen}/${localStorage.length}; `;
         prevLen = localStorage.length;
 
         Object.keys(methods).forEach(key => {

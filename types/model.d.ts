@@ -2,9 +2,7 @@ type Sunscriber<Value> = (value: Value) => void;
 
 export type AtomStoreKey = `${string}${string}:${string}${string}`;
 
-export type AtomOptions<Value> = {
-  /** save in localStorage by this key */
-  storeKey: AtomStoreKey;
+export type AtomOptions<Value, Actions extends Record<string, Function>> = {
   /** **default: true** */
   warnOnDuplicateStoreKey?: boolean;
   /** will update value if localStorage value is changed
@@ -19,7 +17,15 @@ export type AtomOptions<Value> = {
    * **default: false**
    */
   unchangable?: boolean;
-};
+} & (
+  | {
+      /** save in localStorage by this key */
+      storeKey: AtomStoreKey;
+    }
+  | {
+      do: (get: () => Value, set: (value: Value) => void) => Actions;
+    }
+);
 
 export type AtomSetMethod<Value> = (value: Value | ((prev: Value) => Value), isPreventSave?: boolean) => void;
 export type AtomSetDeferredMethod<Value> = (
@@ -31,8 +37,14 @@ export type AtomSetDeferredMethod<Value> = (
 
 export type AtomSubscribeMethod<Value> = (subscriber: Sunscriber<Value>) => () => void;
 
-export class Atom<Value> {
-  constructor(defaultValue: Value, storeKeyOrOptions: AtomStoreKey | undefined | AtomOptions<Value>);
+export type SetActions<Value> = {
+  add: (value: Value) => Set<Value>;
+  delete: (value: Value) => boolean;
+  clear: () => void;
+};
+
+export class Atom<Value, Actions extends Record<string, Function>> {
+  constructor(defaultValue: Value, storeKeyOrOptions: AtomStoreKey | undefined | AtomOptions<Value, Actions>);
 
   readonly defaultValue: Value;
   readonly get: () => Value;
@@ -42,6 +54,7 @@ export class Atom<Value> {
   readonly toggle: () => void;
   readonly inkrement: (delta: number) => void;
   readonly subscribe: AtomSubscribeMethod<Value>;
+  do: Actions & (Value extends Set<infer V> ? SetActions<V> : {});
 }
 
 export function useAtomValue<Value>(atom: Atom<Value>): Value;
@@ -53,8 +66,13 @@ export function useAtomInkrement(atom: Atom<number>): (typeof atom)['inkrement']
 
 export function useAtom<Value>(atom: Atom<Value>): [Value, (typeof atom)['set']];
 
-export type StoreKeyOrOptions<Value> = `${string}${string}:${string}${string}` | AtomOptions<Value>;
+export type StoreKeyOrOptions<Value, Actions extends Record<string, Function>> =
+  | `${string}${string}:${string}${string}`
+  | AtomOptions<Value, Actions>;
 
-export function atom<Value>(value: Value, storeKeyOrOptions?: StoreKeyOrOptions<Value>): Atom<Value>;
+export function atom<Value, Actions extends Record<string, Function>>(
+  value: Value,
+  storeKeyOrOptions?: StoreKeyOrOptions<Value, Actions>,
+): Atom<Value, Actions>;
 
 export function configureAtomaric(hooks: { useSyncExternalStore: typeof useSyncExternalStore }): void;
