@@ -10,7 +10,7 @@ import { SuperAtom } from './super.class';
 
 type Subscriber<Value> = (value: Value) => void;
 
-export class Atom<Value, Actions extends Record<string, Function>> extends SuperAtom<Value> {
+export class Atom<Value, Actions extends Record<string, Function> = {}> extends SuperAtom<Value> {
   private debounceTimeout?: ReturnType<typeof setTimeout>;
   private readonly subscribers = new Set<Subscriber<Value>>();
   private readonly save: (val: Value) => void = () => {};

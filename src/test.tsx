@@ -27,14 +27,16 @@ const testTextAtom = atom('', {
   }),
 });
 
-const arrayAtom = atom<(number | '')[]>(
-  [1, 2, 3, 4, 5, 6, 7, 8, 9],
-
-  { do: () => ({ push: () => {} }) },
-);
+const array: (number | '')[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+const arrayAtom = atom(array, {
+  do: () => ({
+    push2: () => {},
+  }),
+});
 
 console.info(arrayAtom.get());
 arrayAtom.do.push(0);
+arrayAtom.do.push2();
 console.info(arrayAtom.get());
 arrayAtom.do.unshift(-1);
 console.info(arrayAtom.get());

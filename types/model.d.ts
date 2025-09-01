@@ -2,7 +2,7 @@ type Sunscriber<Value> = (value: Value) => void;
 
 export type AtomStoreKey = `${string}${string}:${string}${string}`;
 
-export type AtomOptions<Value, Actions extends Record<string, Function> = Record<string, Function>> = {
+export type AtomOptions<Value, Actions extends Record<string, Function> = {}> = {
   /** **default: true** */
   warnOnDuplicateStoreKey?: boolean;
   /** will update value if localStorage value is changed
@@ -71,7 +71,7 @@ export type DefaultActions<Value> = Value extends Set<infer V>
   ? NumberActions<Value>
   : {};
 
-export class Atom<Value, Actions extends Record<string, Function>> {
+export class Atom<Value, Actions extends Record<string, Function> = {}> {
   constructor(defaultValue: Value, storeKeyOrOptions: AtomStoreKey | undefined | AtomOptions<Value, Actions>);
 
   readonly defaultValue: Value;
@@ -91,7 +91,7 @@ export function useAtomDo<Value>(atom: Atom<Value>): (typeof atom)['do'];
 
 export function useAtom<Value>(atom: Atom<Value>): [Value, (typeof atom)['set']];
 
-export type StoreKeyOrOptions<Value, Actions extends Record<string, Function>> =
+export type StoreKeyOrOptions<Value, Actions extends Record<string, Function> = {}> =
   | `${string}${string}:${string}${string}`
   | AtomOptions<Value, Actions>;
 
