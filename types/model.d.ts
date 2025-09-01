@@ -56,8 +56,8 @@ export type SetActions<Value> = UpdateAction<Value> & {
 };
 
 export type ArrayActions<Value> = UpdateAction<Value[]> & {
-  push: (value: Value) => void;
-  unshift: (value: Value) => void;
+  push: (...values: Value[]) => void;
+  unshift: (...values: Value[]) => void;
   filter: (filter?: (value: Value, index: number, array: Value[]) => any) => void;
 };
 

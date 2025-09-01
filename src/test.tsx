@@ -27,18 +27,20 @@ const testTextAtom = atom('', {
   }),
 });
 
-const array: (number | '')[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+const array: (number | '')[] = [3, 1, 7, 4, 8, 9, 5];
 const arrayAtom = atom(array, {
   do: () => ({
-    push2: () => {},
+    nothing: () => {},
   }),
 });
 
 console.info(arrayAtom.get());
 arrayAtom.do.push(0);
-arrayAtom.do.push2();
+arrayAtom.do.nothing();
 console.info(arrayAtom.get());
 arrayAtom.do.unshift(-1);
+console.info(arrayAtom.get());
+arrayAtom.do.update(arr => arr.sort());
 console.info(arrayAtom.get());
 arrayAtom.do.filter();
 console.info(arrayAtom.get());

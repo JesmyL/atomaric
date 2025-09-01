@@ -15,90 +15,95 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> extends 
   private readonly subscribers = new Set<Subscriber<Value>>();
   private readonly save: (val: Value) => void = () => {};
   private readonly invokeSubscriber = (sub: Subscriber<Value>) => sub(this.get());
-  do = {} as Actions & DefaultActions<Value>;
 
-  constructor(private _defaultValue: Value, storeKeyOrOptions: AtomStoreKey | undefined | AtomOptions<Value, Actions>) {
-    super(_defaultValue);
+  constructor(defaultValue: Value, storeKeyOrOptions: AtomStoreKey | undefined | AtomOptions<Value, Actions>) {
+    super(defaultValue);
 
-    const fillActions = <Value>(_value: Value, actions: DefaultActions<Value>): DefaultActions<Value> & Actions => {
-      return actions as never;
-    };
+    this.doFiller = () => {
+      const fillActions = <Value>(_value: Value, actions: DefaultActions<Value>): DefaultActions<Value> & Actions => {
+        return actions as never;
+      };
 
-    let defaultActions: (DefaultActions<any> & Actions) | null = null;
+      let defaultActions: (DefaultActions<any> & Actions) | null = null;
 
-    if (typeof _defaultValue === 'number') {
-      defaultActions = fillActions<number>(_defaultValue, {
-        increment: delta => {
-          this.set((+this.get() + (delta ?? 0)) as never);
-        },
-      });
-    }
+      if (typeof defaultValue === 'number') {
+        defaultActions = fillActions<number>(defaultValue, {
+          increment: delta => {
+            this.set((+this.get() + (delta ?? 0)) as never);
+          },
+        });
+      }
 
-    if (typeof _defaultValue === 'boolean') {
-      defaultActions = fillActions<boolean>(_defaultValue, {
-        toggle: () => {
-          this.set(!this.get() as never);
-        },
-      });
-    }
+      if (typeof defaultValue === 'boolean') {
+        defaultActions = fillActions<boolean>(defaultValue, {
+          toggle: () => {
+            this.set(!this.get() as never);
+          },
+        });
+      }
 
-    if (Array.isArray(_defaultValue)) {
-      defaultActions = fillActions<any[]>(_defaultValue, {
-        push: value => {
-          this.set([...(this.get() as never), value] as never);
-        },
-        unshift: value => {
-          this.set([value, ...(this.get() as never)] as never);
-        },
-        update: updater => {
-          const newArray = [...(this.get() as never)];
-          updater(newArray);
-          this.set(newArray as never);
-        },
-        filter: filter => {
-          this.set((this.get() as []).filter(filter ?? itIt) as never);
-        },
-      });
-    }
+      if (Array.isArray(defaultValue)) {
+        defaultActions = fillActions<any[]>(defaultValue, {
+          push: (...values) => {
+            this.set([this.get()].flat().concat(values as never) as never);
+          },
+          unshift: (...values) => {
+            this.set(values.concat(this.get()) as never);
+          },
+          update: updater => {
+            const newArray = [...(this.get() as never)];
+            updater(newArray);
+            this.set(newArray as never);
+          },
+          filter: filter => {
+            this.set((this.get() as []).filter(filter ?? itIt) as never);
+          },
+        });
+      }
 
-    if (_defaultValue instanceof Set) {
-      defaultActions = fillActions<Set<any>>(_defaultValue, {
-        add: value => {
-          const newSet = new Set(this.get() as never);
-          newSet.add(value);
-          this.set(newSet as never);
-        },
-        delete: value => {
-          const newSet = new Set(this.get() as never);
-          newSet.delete(value);
-          this.set(newSet as never);
-        },
-        clear: () => {
-          this.set(new Set() as never);
-        },
-        update: updater => {
-          const newSet = new Set(this.get() as never);
-          updater(newSet);
-          this.set(newSet as never);
-        },
-      });
-    }
+      if (defaultValue instanceof Set) {
+        defaultActions = fillActions<Set<any>>(defaultValue, {
+          add: value => {
+            const newSet = new Set(this.get() as never);
+            newSet.add(value);
+            this.set(newSet as never);
+          },
+          delete: value => {
+            const newSet = new Set(this.get() as never);
+            newSet.delete(value);
+            this.set(newSet as never);
+          },
+          clear: () => {
+            this.set(new Set() as never);
+          },
+          update: updater => {
+            const newSet = new Set(this.get() as never);
+            updater(newSet);
+            this.set(newSet as never);
+          },
+        });
+      }
 
-    const actions =
-      typeof storeKeyOrOptions === 'object' && 'do' in storeKeyOrOptions
-        ? storeKeyOrOptions.do(
-            () => this.get(),
-            (value, isPreventSave) => this.set(value, isPreventSave),
-          )
-        : {};
+      const actions =
+        typeof storeKeyOrOptions === 'object' && 'do' in storeKeyOrOptions
+          ? storeKeyOrOptions.do(
+              () => this.get(),
+              (value, isPreventSave) => this.set(value, isPreventSave),
+            )
+          : {};
 
-    this.do = {
-      ...actions,
-      ...(defaultActions as DefaultActions<Value> & Actions),
+      const doActions = {
+        ...actions,
+        ...(defaultActions as DefaultActions<Value> & Actions),
+      };
+
+      this.doFiller = () => doActions;
+
+      return doActions;
     };
 
     this.reset = () => {
-      this.set(_defaultValue, true);
+      this.set(defaultValue, true);
       this.subscribers.forEach(this.invokeSubscriber, this);
     };
 
@@ -110,10 +115,10 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> extends 
     let isUnchangable = false;
 
     let parseValue: AtomOptions<Value, Actions>['parseValue'] =
-      _defaultValue instanceof Set ? strValue => new Set(JSON.parse(strValue)) : strValue => JSON.parse(strValue);
+      defaultValue instanceof Set ? strValue => new Set(JSON.parse(strValue)) : strValue => JSON.parse(strValue);
 
     let stringifyValue: AtomOptions<Value, Actions>['stringifyValue'] =
-      _defaultValue instanceof Set
+      defaultValue instanceof Set
         ? val => {
             if (val instanceof Set) return JSON.stringify(Array.from(val));
 
@@ -145,7 +150,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> extends 
       if (isInactualValue) {
         isInactualValue = false;
         try {
-          super.setValue(key in localStorage ? parseValue(localStorage[key]) : _defaultValue);
+          super.setValue(key in localStorage ? parseValue(localStorage[key]) : defaultValue);
         } catch (e) {
           console.warn('Invalid json value', localStorage[key]);
         }
@@ -155,7 +160,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> extends 
     };
 
     this.save = value => {
-      if (value === _defaultValue) {
+      if (value === defaultValue) {
         this.reset();
         return;
       }
@@ -165,7 +170,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> extends 
 
     this.reset = () => {
       delete localStorage[key];
-      this.set(_defaultValue, true);
+      this.set(defaultValue, true);
     };
 
     if (warnOnDuplicateStoreKey && methods[key] !== undefined) console.warn('Duplicate Atom key', storeKey);
@@ -209,9 +214,15 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> extends 
     }
   }
 
-  get defaultValue() {
-    return this._defaultValue;
+  get do(): Actions & DefaultActions<Value> {
+    return this.doFiller();
   }
+
+  get defaultValue() {
+    return super.getDefaultValue();
+  }
+
+  private doFiller = (): Actions & DefaultActions<Value> => ({} as never);
 
   get = () => super.getValue();
   readonly reset: () => void;

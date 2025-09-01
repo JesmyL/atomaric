@@ -1,8 +1,9 @@
 export class SuperAtom<Value> {
   private value: Value;
 
-  constructor(_defaultValue: Value) {
-    this.value = _defaultValue;
+  constructor(defaultValue: Value) {
+    this.value = defaultValue;
+    this.getDefaultValue = () => defaultValue;
   }
 
   protected getValue() {
@@ -10,5 +11,9 @@ export class SuperAtom<Value> {
   }
   protected setValue(value: Value) {
     this.value = value;
+  }
+
+  protected getDefaultValue() {
+    return null as Value;
   }
 }
