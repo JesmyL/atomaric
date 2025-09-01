@@ -13,7 +13,7 @@ createRoot(document.getElementById('root')!).render(
 const testAtom = atom(new Set<number>(), {
   storeKey: 'test:set',
   do: (get, set) => ({
-    update: () => set(new Set(get()).add(12)),
+    update2: () => set(new Set(get()).add(12)),
   }),
 });
 
@@ -26,6 +26,20 @@ const testTextAtom = atom('', {
     },
   }),
 });
+
+const arrayAtom = atom<(number | '')[]>(
+  [1, 2, 3, 4, 5, 6, 7, 8, 9],
+
+  { do: () => ({ push: () => {} }) },
+);
+
+console.info(arrayAtom.get());
+arrayAtom.do.push(0);
+console.info(arrayAtom.get());
+arrayAtom.do.unshift(-1);
+console.info(arrayAtom.get());
+arrayAtom.do.filter();
+console.info(arrayAtom.get());
 
 atom(0, 'a:a');
 atom(0, { storeKey: 'a:a' });
@@ -40,7 +54,7 @@ function App() {
   useEffect(() => {
     const onClick = () => {
       testAtom.do.add(Date.now());
-      testAtom.do.update();
+      testAtom.do.update2();
       testTextAtom.do.addText('1');
     };
 

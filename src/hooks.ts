@@ -2,11 +2,10 @@ import { useSyncExternalStore } from 'react';
 import {
   atom as atomType,
   configureAtomaric as configureAtomaricType,
+  useAtomDo as useAtomDoType,
   useAtomGet as useAtomGetType,
-  useAtomInkrement as useAtomInkrementType,
   useAtomSetDeferred as useAtomSetDeferredType,
   useAtomSet as useAtomSetType,
-  useAtomToggle as useAtomToggleType,
   useAtom as useAtomType,
   useAtomValue as useAtomValueType,
 } from '../types/model';
@@ -25,8 +24,7 @@ export const useAtomValue: typeof useAtomValueType = atom => {
 export const useAtomSet: typeof useAtomSetType = atom => atom.set;
 export const useAtomSetDeferred: typeof useAtomSetDeferredType = atom => atom.setDeferred;
 export const useAtomGet: typeof useAtomGetType = atom => atom.get;
-export const useAtomToggle: typeof useAtomToggleType = atom => atom.toggle;
-export const useAtomInkrement: typeof useAtomInkrementType = atom => atom.inkrement;
+export const useAtomDo: typeof useAtomDoType = atom => atom.do;
 
 export const useAtom: typeof useAtomType = atom => [useAtomValue(atom), useAtomSet(atom)];
 

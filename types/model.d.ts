@@ -2,7 +2,7 @@ type Sunscriber<Value> = (value: Value) => void;
 
 export type AtomStoreKey = `${string}${string}:${string}${string}`;
 
-export type AtomOptions<Value, Actions extends Record<string, Function>> = {
+export type AtomOptions<Value, Actions extends Record<string, Function> = Record<string, Function>> = {
   /** **default: true** */
   warnOnDuplicateStoreKey?: boolean;
   /** will update value if localStorage value is changed
@@ -23,7 +23,7 @@ export type AtomOptions<Value, Actions extends Record<string, Function>> = {
       storeKey: AtomStoreKey;
     }
   | {
-      do: (get: () => Value, set: (value: Value) => void) => Actions;
+      do: (get: () => Value, set: (value: Value, isPreventSave?: boolean) => void) => Actions;
     }
 );
 
@@ -37,11 +37,39 @@ export type AtomSetDeferredMethod<Value> = (
 
 export type AtomSubscribeMethod<Value> = (subscriber: Sunscriber<Value>) => () => void;
 
-export type SetActions<Value> = {
-  add: (value: Value) => Set<Value>;
-  delete: (value: Value) => boolean;
+export type UpdateAction<Value> = {
+  update: (updater: (value: Value) => void) => void;
+};
+
+export type NumberActions<Value> = {
+  increment: (delta?: number) => void;
+};
+
+export type BooleanActions<Value> = {
+  toggle: () => void;
+};
+
+export type SetActions<Value> = UpdateAction<Value> & {
+  add: (value: Value) => void;
+  delete: (value: Value) => void;
   clear: () => void;
 };
+
+export type ArrayActions<Value> = UpdateAction<Value[]> & {
+  push: (value: Value) => void;
+  unshift: (value: Value) => void;
+  filter: (filter?: (value: Value, index: number, array: Value[]) => any) => void;
+};
+
+export type DefaultActions<Value> = Value extends Set<infer V>
+  ? SetActions<V>
+  : Value extends boolean
+  ? BooleanActions<Value>
+  : Value extends (infer Val)[]
+  ? ArrayActions<Val>
+  : Value extends number
+  ? NumberActions<Value>
+  : {};
 
 export class Atom<Value, Actions extends Record<string, Function>> {
   constructor(defaultValue: Value, storeKeyOrOptions: AtomStoreKey | undefined | AtomOptions<Value, Actions>);
@@ -51,18 +79,15 @@ export class Atom<Value, Actions extends Record<string, Function>> {
   readonly set: AtomSetMethod<Value>;
   readonly setDeferred: AtomSetDeferredMethod<Value>;
   readonly reset: () => void;
-  readonly toggle: () => void;
-  readonly inkrement: (delta: number) => void;
   readonly subscribe: AtomSubscribeMethod<Value>;
-  do: Actions & (Value extends Set<infer V> ? SetActions<V> : {});
+  do: Actions & DefaultActions<Value>;
 }
 
 export function useAtomValue<Value>(atom: Atom<Value>): Value;
 export function useAtomSet<Value>(atom: Atom<Value>): (typeof atom)['set'];
 export function useAtomSetDeferred<Value>(atom: Atom<Value>): (typeof atom)['setDeferred'];
 export function useAtomGet<Value>(atom: Atom<Value>): (typeof atom)['get'];
-export function useAtomToggle(atom: Atom<boolean>): (typeof atom)['toggle'];
-export function useAtomInkrement(atom: Atom<number>): (typeof atom)['inkrement'];
+export function useAtomDo<Value>(atom: Atom<Value>): (typeof atom)['do'];
 
 export function useAtom<Value>(atom: Atom<Value>): [Value, (typeof atom)['set']];
 
@@ -70,7 +95,7 @@ export type StoreKeyOrOptions<Value, Actions extends Record<string, Function>> =
   | `${string}${string}:${string}${string}`
   | AtomOptions<Value, Actions>;
 
-export function atom<Value, Actions extends Record<string, Function>>(
+export function atom<Value, Actions extends Record<string, Function> = {}>(
   value: Value,
   storeKeyOrOptions?: StoreKeyOrOptions<Value, Actions>,
 ): Atom<Value, Actions>;
