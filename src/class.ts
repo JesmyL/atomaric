@@ -93,7 +93,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
       }
 
       const actions =
-        typeof storeKeyOrOptions === 'object' && 'do' in storeKeyOrOptions
+        typeof storeKeyOrOptions === 'object' && storeKeyOrOptions != null && 'do' in storeKeyOrOptions
           ? storeKeyOrOptions.do(
               () => this.get(),
               (value, isPreventSave) => set(value, isPreventSave),
