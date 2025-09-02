@@ -19,7 +19,6 @@ const testAtom = atom(new Set<number>(), {
 
 const testTextAtom = atom('', {
   storeKey: 'test:text',
-  unchangable: true,
   do: (get, set) => ({
     addText: (text: string) => {
       set(get() + text);
@@ -34,7 +33,7 @@ const arrayAtom = atom(array, {
   }),
 });
 
-console.info(arrayAtom.get());
+console.info(arrayAtom);
 arrayAtom.do.push(0);
 arrayAtom.do.nothing();
 console.info(arrayAtom.get());

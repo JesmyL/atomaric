@@ -6,20 +6,28 @@ import {
   AtomSubscribeMethod,
   DefaultActions,
 } from '../types/model';
-import { SuperAtom } from './super.class';
 
 type Subscriber<Value> = (value: Value) => void;
 
-export class Atom<Value, Actions extends Record<string, Function> = {}> extends SuperAtom<Value> {
-  private debounceTimeout?: ReturnType<typeof setTimeout>;
-  private readonly subscribers = new Set<Subscriber<Value>>();
-  private readonly save: (val: Value) => void = () => {};
-  private readonly invokeSubscriber = (sub: Subscriber<Value>) => sub(this.get());
+export class Atom<Value, Actions extends Record<string, Function> = {}> {
+  get: () => Value;
+  set: AtomSetMethod<Value>;
+  setDeferred: AtomSetDeferredMethod<Value>;
+  reset: () => void;
+  subscribe: AtomSubscribeMethod<Value>;
+  defaultValue!: Value;
+  do!: Actions & DefaultActions<Value>;
 
   constructor(defaultValue: Value, storeKeyOrOptions: AtomStoreKey | undefined | AtomOptions<Value, Actions>) {
-    super(defaultValue);
+    let ______current_value_____ = defaultValue;
+    let debounceTimeout: ReturnType<typeof setTimeout> | undefined;
+    let save: (val: Value) => void = () => {};
 
-    this.doFiller = () => {
+    const updateCurrentValue = (value: Value) => (______current_value_____ = value);
+    const getCurrentValue = () => ______current_value_____;
+    this.get = () => getCurrentValue();
+
+    let doFiller = () => {
       const fillActions = <Value>(_value: Value, actions: DefaultActions<Value>): DefaultActions<Value> & Actions => {
         return actions as never;
       };
@@ -29,7 +37,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> extends 
       if (typeof defaultValue === 'number') {
         defaultActions = fillActions<number>(defaultValue, {
           increment: delta => {
-            this.set((+this.get() + (delta ?? 0)) as never);
+            set((+this.get() + (delta ?? 0)) as never);
           },
         });
       }
@@ -37,7 +45,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> extends 
       if (typeof defaultValue === 'boolean') {
         defaultActions = fillActions<boolean>(defaultValue, {
           toggle: () => {
-            this.set(!this.get() as never);
+            set(!this.get() as never);
           },
         });
       }
@@ -45,18 +53,18 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> extends 
       if (Array.isArray(defaultValue)) {
         defaultActions = fillActions<any[]>(defaultValue, {
           push: (...values) => {
-            this.set([this.get()].flat().concat(values as never) as never);
+            set([this.get()].flat().concat(values as never) as never);
           },
           unshift: (...values) => {
-            this.set(values.concat(this.get()) as never);
+            set(values.concat(this.get()) as never);
           },
           update: updater => {
             const newArray = [...(this.get() as never)];
             updater(newArray);
-            this.set(newArray as never);
+            set(newArray as never);
           },
           filter: filter => {
-            this.set((this.get() as []).filter(filter ?? itIt) as never);
+            set((this.get() as []).filter(filter ?? itIt) as never);
           },
         });
       }
@@ -66,20 +74,20 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> extends 
           add: value => {
             const newSet = new Set(this.get() as never);
             newSet.add(value);
-            this.set(newSet as never);
+            set(newSet as never);
           },
           delete: value => {
             const newSet = new Set(this.get() as never);
             newSet.delete(value);
-            this.set(newSet as never);
+            set(newSet as never);
           },
           clear: () => {
-            this.set(new Set() as never);
+            set(new Set() as never);
           },
           update: updater => {
             const newSet = new Set(this.get() as never);
             updater(newSet);
-            this.set(newSet as never);
+            set(newSet as never);
           },
         });
       }
@@ -88,7 +96,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> extends 
         typeof storeKeyOrOptions === 'object' && 'do' in storeKeyOrOptions
           ? storeKeyOrOptions.do(
               () => this.get(),
-              (value, isPreventSave) => this.set(value, isPreventSave),
+              (value, isPreventSave) => set(value, isPreventSave),
             )
           : {};
 
@@ -97,22 +105,56 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> extends 
         ...(defaultActions as DefaultActions<Value> & Actions),
       };
 
-      this.doFiller = () => doActions;
+      doFiller = () => doActions;
 
       return doActions;
     };
 
+    Object.defineProperty(this, 'do', { get: () => doFiller() });
+    Object.defineProperty(this, 'defaultValue', { get: () => defaultValue });
+
+    const subscribers = new Set<Subscriber<Value>>();
+    const invokeSubscriber = (sub: Subscriber<Value>) => sub(this.get());
+    this.subscribe = sub => {
+      subscribers.add(sub);
+      return () => (subscribers.delete(sub), undefined);
+    };
+
+    const set: typeof this.set = (value, isPreventSave) => {
+      const val = typeof value === 'function' ? (value as (value: Value) => Value)(this.get()) : value;
+      if (val === this.get() || val === undefined || (typeof val === 'number' && isNaN(val))) return;
+
+      updateCurrentValue(val);
+      subscribers.forEach(invokeSubscriber, this);
+
+      if (isPreventSave !== true) save(val);
+    };
+    this.set = (value, isPreventSave) => set(value, isPreventSave);
+
     this.reset = () => {
-      this.set(defaultValue, true);
-      this.subscribers.forEach(this.invokeSubscriber, this);
+      set(defaultValue, true);
+      subscribers.forEach(invokeSubscriber, this);
+    };
+
+    this.setDeferred = (value, debounceMs = 500, isPreventSave, isInitInvoke = true) => {
+      if (isInitInvoke && debounceTimeout === undefined) set(value, isPreventSave);
+
+      clearTimeout(debounceTimeout);
+
+      debounceTimeout = setTimeout(() => {
+        set(value, isPreventSave);
+        debounceTimeout = undefined;
+      }, debounceMs);
     };
 
     if (storeKeyOrOptions == null) return;
+    ////////////////////////
+    //////////////////////// storaged value
+    ////////////////////////
 
     let storeKey = null;
     let warnOnDuplicateStoreKey = true;
     let listenStorageChanges = true;
-    let isUnchangable = false;
 
     let parseValue: AtomOptions<Value, Actions>['parseValue'] =
       defaultValue instanceof Set ? strValue => new Set(JSON.parse(strValue)) : strValue => JSON.parse(strValue);
@@ -136,7 +178,6 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> extends 
 
       parseValue = storeKeyOrOptions.parseValue ?? parseValue;
       stringifyValue = storeKeyOrOptions.stringifyValue ?? stringifyValue;
-      isUnchangable = storeKeyOrOptions.unchangable ?? isUnchangable;
     }
 
     if (storeKey === null) return;
@@ -145,216 +186,57 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> extends 
     let isInactualValue = true;
 
     this.get = () => {
-      this.get = () => super.getValue();
+      this.get = () => getCurrentValue();
 
       if (isInactualValue) {
         isInactualValue = false;
         try {
-          super.setValue(key in localStorage ? parseValue(localStorage[key]) : defaultValue);
+          updateCurrentValue(key in localStorage ? parseValue(localStorage[key]) : defaultValue);
         } catch (e) {
           console.warn('Invalid json value', localStorage[key]);
         }
       }
 
-      return super.getValue();
+      return getCurrentValue();
     };
 
-    this.save = value => {
+    save = value => {
       if (value === defaultValue) {
         this.reset();
         return;
       }
       localStorage[key] = stringifyValue(value);
-      postChanged(key);
     };
 
     this.reset = () => {
       delete localStorage[key];
-      this.set(defaultValue, true);
+      set(defaultValue, true);
     };
 
-    if (warnOnDuplicateStoreKey && methods[key] !== undefined) console.warn('Duplicate Atom key', storeKey);
-
-    methods[key] = {};
+    if (warnOnDuplicateStoreKey && update[key] !== undefined) console.warn('Duplicate Atom key', storeKey);
 
     if (listenStorageChanges) {
-      if (isUnchangable) {
-        let timeout: ReturnType<typeof setTimeout>;
-        let isCantUpdate = false;
+      update[key] = event => {
+        if (event.newValue === null) {
+          this.reset();
+          return;
+        }
 
-        methods[key].updateUnchangable = () => {
-          try {
-            this.set(parseValue(localStorage[key]), true);
-          } catch (e) {}
-        };
-
-        unchangables[key] = () => {
-          if (isCantUpdate) return;
-          isCantUpdate = true;
-          localStorage[key] = stringifyValue(this.get());
-          clearTimeout(timeout);
-          timeout = setTimeout(() => (isCantUpdate = false), 100);
-        };
-
-        startUnchangableChangesDetection();
-      } else {
-        methods[key].updatable = event => {
-          if (event.newValue === null) {
-            this.reset();
-            return;
-          }
-
-          try {
-            this.set(parseValue(event.newValue));
-          } catch (_e) {
-            console.warn('Invalid json value', event.newValue);
-          }
-        };
-      }
+        try {
+          set(parseValue(event.newValue));
+        } catch (_e) {
+          console.warn('Invalid json value', event.newValue);
+        }
+      };
     }
   }
-
-  get do(): Actions & DefaultActions<Value> {
-    return this.doFiller();
-  }
-
-  get defaultValue() {
-    return super.getDefaultValue();
-  }
-
-  private doFiller = (): Actions & DefaultActions<Value> => ({} as never);
-
-  get = () => super.getValue();
-  readonly reset: () => void;
-
-  readonly subscribe: AtomSubscribeMethod<Value> = sub => {
-    this.subscribers.add(sub);
-    return () => {
-      this.subscribers.delete(sub);
-    };
-  };
-
-  readonly set: AtomSetMethod<Value> = (value, isPreventSave) => {
-    const val = typeof value === 'function' ? (value as (value: Value) => Value)(this.get()) : value;
-    if (val === this.get() || val === undefined || (typeof val === 'number' && isNaN(val))) return;
-
-    super.setValue(val);
-    this.subscribers.forEach(this.invokeSubscriber, this);
-
-    if (isPreventSave !== true) this.save(val);
-  };
-
-  readonly setDeferred: AtomSetDeferredMethod<Value> = (
-    value,
-    debounceMs = 500,
-    isPreventSave,
-    isInitInvoke = true,
-  ) => {
-    if (isInitInvoke && this.debounceTimeout === undefined) this.set(value, isPreventSave);
-
-    clearTimeout(this.debounceTimeout);
-
-    this.debounceTimeout = setTimeout(() => {
-      this.set(value, isPreventSave);
-      delete this.debounceTimeout;
-    }, debounceMs);
-  };
 }
 
 const localStorage = window.localStorage;
-const methods: Partial<
-  Record<
-    string,
-    {
-      updateUnchangable?: () => void;
-      updatable?: (event: StorageEvent) => void;
-    }
-  >
-> = {};
-
-const unchangables: Partial<Record<string, () => void>> = {};
+const update: Partial<Record<string, (event: StorageEvent) => void>> = {};
+const itIt = <It>(it: It) => it;
 
 window.addEventListener('storage', event => {
   if (event.key === null || event.newValue === event.oldValue) return;
-  unchangables[event.key]?.();
-  methods[event.key]?.updatable?.(event);
+  update[event.key]?.(event);
 });
-
-const unchangableChangedChannel = new BroadcastChannel('unchangableChanged');
-
-unchangableChangedChannel.addEventListener('message', event => {
-  methods[event.data]?.updateUnchangable?.();
-});
-
-const postChanged = (key: string) => {
-  unchangableChangedChannel.postMessage(key);
-};
-
-const setItem = localStorage.setItem.bind(localStorage);
-const removeItem = localStorage.removeItem.bind(localStorage);
-const clearStorage = localStorage.clear.bind(localStorage);
-
-localStorage.setItem = (key, value) => {
-  if (unchangables[key] !== undefined) return;
-  setItem.call(localStorage, key, value);
-};
-localStorage.removeItem = key => {
-  if (unchangables[key] !== undefined) return;
-  removeItem.call(localStorage, key);
-};
-
-localStorage.clear = () => {
-  clearStorage();
-  checkRemovedUnchangables();
-};
-
-let prevLen = localStorage.length;
-const checkRemovedUnchangables = () => {
-  if (prevLen === localStorage.length) return;
-  prevLen = localStorage.length;
-
-  Object.keys(unchangables).forEach(key => {
-    if (key in localStorage) return;
-    postChanged(key);
-    unchangables[key]!();
-  });
-};
-
-const startUnchangableChangesDetection = (() => {
-  let isWasStarted = false;
-  return () => {
-    if (isWasStarted) return;
-    isWasStarted = true;
-    let checkInterval: ReturnType<typeof setInterval>;
-
-    const listen = () => {
-      clearInterval(checkInterval);
-      checkInterval = setInterval(checkRemovedUnchangables, 0);
-      checkRemovedUnchangables();
-    };
-
-    listen();
-
-    window.addEventListener('focus', () => clearInterval(checkInterval), true);
-    window.addEventListener('focus', () => clearInterval(checkInterval), false);
-    window.addEventListener('click', () => clearInterval(checkInterval), false);
-    window.addEventListener('click', () => clearInterval(checkInterval), true);
-    window.addEventListener('blur', listen, true);
-  };
-})();
-
-(() => {
-  const forEach = (key: string) => {
-    if (key in localStorage) return;
-    unchangables[key]?.();
-  };
-  const then = () => Object.keys(methods).forEach(forEach);
-  Object.defineProperty(window, 'localStorage', {
-    get: () => {
-      Promise.resolve().then(then);
-      return localStorage;
-    },
-  });
-})();
-
-const itIt = <It>(it: It) => it;

@@ -13,10 +13,6 @@ export type AtomOptions<Value, Actions extends Record<string, Function> = {}> = 
   parseValue?: (stringifiedValue: string) => Value;
   /** map Value to localStorage string value */
   stringifyValue?: (value: Value) => string;
-  /** can not to change localStorage value in dev tools
-   * **default: false**
-   */
-  unchangable?: boolean;
 } & (
   | {
       /** save in localStorage by this key */
