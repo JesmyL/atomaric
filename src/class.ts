@@ -28,68 +28,70 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
     this.get = () => getCurrentValue();
 
     let doFiller = () => {
-      const fillActions = <Value>(_value: Value, actions: DefaultActions<Value>): DefaultActions<Value> & Actions => {
-        return actions as never;
-      };
-
-      let defaultActions: (DefaultActions<any> & Actions) | null = null;
+      let defaultActions: DefaultActions<any> | null = null;
 
       if (typeof defaultValue === 'number') {
-        defaultActions = fillActions<number>(defaultValue, {
-          increment: delta => {
-            set((+this.get() + (delta ?? 0)) as never);
+        defaultActions = fillActions<number>(
+          {
+            increment: delta => {
+              set((+this.get() + (delta ?? 0)) as never);
+            },
           },
-        });
-      }
-
-      if (typeof defaultValue === 'boolean') {
-        defaultActions = fillActions<boolean>(defaultValue, {
-          toggle: () => {
-            set(!this.get() as never);
+          defaultValue,
+        );
+      } else if (typeof defaultValue === 'boolean') {
+        defaultActions = fillActions<boolean>(
+          {
+            toggle: () => {
+              set(!this.get() as never);
+            },
           },
-        });
-      }
-
-      if (Array.isArray(defaultValue)) {
-        defaultActions = fillActions<any[]>(defaultValue, {
-          push: (...values) => {
-            set([this.get()].flat().concat(values as never) as never);
+          defaultValue,
+        );
+      } else if (Array.isArray(defaultValue)) {
+        defaultActions = fillActions<any[]>(
+          {
+            push: (...values) => {
+              set([this.get()].flat().concat(values as never) as never);
+            },
+            unshift: (...values) => {
+              set(values.concat(this.get()) as never);
+            },
+            update: updater => {
+              const newArray = [...(this.get() as never)];
+              updater(newArray);
+              set(newArray as never);
+            },
+            filter: filter => {
+              set((this.get() as []).filter(filter ?? itIt) as never);
+            },
           },
-          unshift: (...values) => {
-            set(values.concat(this.get()) as never);
+          defaultValue,
+        );
+      } else if (defaultValue instanceof Set) {
+        defaultActions = fillActions<Set<any>>(
+          {
+            add: value => {
+              const newSet = new Set(this.get() as never);
+              newSet.add(value);
+              set(newSet as never);
+            },
+            delete: value => {
+              const newSet = new Set(this.get() as never);
+              newSet.delete(value);
+              set(newSet as never);
+            },
+            clear: () => {
+              set(new Set() as never);
+            },
+            update: updater => {
+              const newSet = new Set(this.get() as never);
+              updater(newSet);
+              set(newSet as never);
+            },
           },
-          update: updater => {
-            const newArray = [...(this.get() as never)];
-            updater(newArray);
-            set(newArray as never);
-          },
-          filter: filter => {
-            set((this.get() as []).filter(filter ?? itIt) as never);
-          },
-        });
-      }
-
-      if (defaultValue instanceof Set) {
-        defaultActions = fillActions<Set<any>>(defaultValue, {
-          add: value => {
-            const newSet = new Set(this.get() as never);
-            newSet.add(value);
-            set(newSet as never);
-          },
-          delete: value => {
-            const newSet = new Set(this.get() as never);
-            newSet.delete(value);
-            set(newSet as never);
-          },
-          clear: () => {
-            set(new Set() as never);
-          },
-          update: updater => {
-            const newSet = new Set(this.get() as never);
-            updater(newSet);
-            set(newSet as never);
-          },
-        });
+          defaultValue,
+        );
       }
 
       const actions =
@@ -100,10 +102,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
             )
           : {};
 
-      const doActions = {
-        ...actions,
-        ...(defaultActions as DefaultActions<Value> & Actions),
-      };
+      const doActions = { ...actions, ...defaultActions };
 
       doFiller = () => doActions;
 
@@ -172,8 +171,8 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
     if (typeof storeKeyOrOptions === 'string') {
       storeKey = storeKeyOrOptions;
     } else if ('storeKey' in storeKeyOrOptions) {
-      warnOnDuplicateStoreKey = storeKeyOrOptions.warnOnDuplicateStoreKey ?? true;
-      listenStorageChanges = storeKeyOrOptions.listenStorageChanges ?? true;
+      warnOnDuplicateStoreKey = storeKeyOrOptions.warnOnDuplicateStoreKey ?? warnOnDuplicateStoreKey;
+      listenStorageChanges = storeKeyOrOptions.listenStorageChanges ?? listenStorageChanges;
       storeKey = storeKeyOrOptions.storeKey;
 
       parseValue = storeKeyOrOptions.parseValue ?? parseValue;
@@ -240,3 +239,5 @@ window.addEventListener('storage', event => {
   if (event.key === null || event.newValue === event.oldValue) return;
   update[event.key]?.(event);
 });
+
+const fillActions = <Value>(actions: DefaultActions<Value>, _value: Value) => actions;
