@@ -27,6 +27,9 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
     const getCurrentValue = () => ______current_value_____;
     this.get = () => getCurrentValue();
 
+    Object.defineProperty(this, 'do', { get: () => doFiller() });
+    Object.defineProperty(this, 'defaultValue', { get: () => defaultValue });
+
     let doFiller = () => {
       let defaultActions: DefaultActions<any> | null = null;
 
@@ -108,9 +111,6 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
 
       return doActions;
     };
-
-    Object.defineProperty(this, 'do', { get: () => doFiller() });
-    Object.defineProperty(this, 'defaultValue', { get: () => defaultValue });
 
     const subscribers = new Set<Subscriber<Value>>();
     const invokeSubscriber = (sub: Subscriber<Value>) => sub(this.get());
@@ -234,10 +234,9 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
 const localStorage = window.localStorage;
 const update: Partial<Record<string, (event: StorageEvent) => void>> = {};
 const itIt = <It>(it: It) => it;
+const fillActions = <Value>(actions: DefaultActions<Value>, _value: Value) => actions;
 
 window.addEventListener('storage', event => {
   if (event.key === null || event.newValue === event.oldValue) return;
   update[event.key]?.(event);
 });
-
-const fillActions = <Value>(actions: DefaultActions<Value>, _value: Value) => actions;

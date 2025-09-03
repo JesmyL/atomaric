@@ -1,6 +1,6 @@
 import React, { useEffect, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
-import { atom, configureAtomaric, useAtomValue } from './hooks';
+import { atom, configureAtomaric, useAtomDo, useAtomValue } from './lib';
 
 configureAtomaric({ useSyncExternalStore });
 
@@ -13,12 +13,14 @@ createRoot(document.getElementById('root')!).render(
 const testAtom = atom(new Set<number>(), {
   storeKey: 'test:set',
   do: (get, set) => ({
-    update2: () => set(new Set(get()).add(12)),
+    update12: () => set(new Set(get()).add(12)),
   }),
 });
 
 const testTextAtom = atom('', {
   storeKey: 'test:text',
+  stringifyValue: value => JSON.stringify({ value }),
+  parseValue: string => JSON.parse(string).value,
   do: (get, set) => ({
     addText: (text: string) => {
       set(get() + text);
@@ -51,13 +53,14 @@ atom(0, { storeKey: 'a:a', warnOnDuplicateStoreKey: false });
 function App() {
   const test = useAtomValue(testAtom);
   const testText = useAtomValue(testTextAtom);
+  const testDo = useAtomDo(testAtom);
 
   console.info(test);
 
   useEffect(() => {
     const onClick = () => {
-      testAtom.do.add(Date.now());
-      testAtom.do.update2();
+      testDo.add(Date.now());
+      testDo.update12();
       testTextAtom.do.addText('1');
     };
 

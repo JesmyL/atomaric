@@ -15,7 +15,8 @@ let useSyncExtStore = (() => {
   throw 'call configureAtomaric() before all!';
 }) as typeof useSyncExternalStore;
 
-export const configureAtomaric: typeof configureAtomaricType = hooks => (useSyncExtStore = hooks.useSyncExternalStore);
+export const configureAtomaric: typeof configureAtomaricType = options =>
+  (useSyncExtStore = options.useSyncExternalStore);
 
 export const useAtomValue: typeof useAtomValueType = atom => {
   return useSyncExtStore(atom.subscribe, atom.get);

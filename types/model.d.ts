@@ -19,6 +19,7 @@ export type AtomOptions<Value, Actions extends Record<string, Function> = {}> = 
       storeKey: AtomStoreKey;
     }
   | {
+      /** declare your custom actions */
       do: (get: () => Value, set: (value: Value, isPreventSave?: boolean) => void) => Actions;
     }
 );
@@ -57,8 +58,8 @@ export type ArrayActions<Value> = UpdateAction<Value[]> & {
   filter: (filter?: (value: Value, index: number, array: Value[]) => any) => void;
 };
 
-export type DefaultActions<Value> = Value extends Set<infer V>
-  ? SetActions<V>
+export type DefaultActions<Value> = Value extends Set<infer Val>
+  ? SetActions<Val>
   : Value extends boolean
   ? BooleanActions<Value>
   : Value extends (infer Val)[]
@@ -68,27 +69,36 @@ export type DefaultActions<Value> = Value extends Set<infer V>
   : {};
 
 export class Atom<Value, Actions extends Record<string, Function> = {}> {
-  constructor(defaultValue: Value, storeKeyOrOptions: AtomStoreKey | undefined | AtomOptions<Value, Actions>);
+  constructor(defaultValue: Value, storeKeyOrOptions: StoreKeyOrOptions<Value, Actions> | undefined);
 
   readonly defaultValue: Value;
   readonly get: () => Value;
   readonly set: AtomSetMethod<Value>;
   readonly setDeferred: AtomSetDeferredMethod<Value>;
+  /** set default (initial) value as current */
   readonly reset: () => void;
+  /** subscribe on value changes */
   readonly subscribe: AtomSubscribeMethod<Value>;
-  do: Actions & DefaultActions<Value>;
+  /** your custom actions */
+  readonly do: Actions & DefaultActions<Value>;
 }
 
-export function useAtomValue<Value>(atom: Atom<Value>): Value;
-export function useAtomSet<Value>(atom: Atom<Value>): (typeof atom)['set'];
-export function useAtomSetDeferred<Value>(atom: Atom<Value>): (typeof atom)['setDeferred'];
-export function useAtomGet<Value>(atom: Atom<Value>): (typeof atom)['get'];
-export function useAtomDo<Value>(atom: Atom<Value>): (typeof atom)['do'];
+export function useAtom<Value>(atom: Atom<Value>): [Value, AtomSetMethod<Value>];
 
-export function useAtom<Value>(atom: Atom<Value>): [Value, (typeof atom)['set']];
+/** observable atom value */
+export function useAtomValue<Value>(atom: Atom<Value>): Value;
+
+export function useAtomSet<Value>(atom: Atom<Value>): AtomSetMethod<Value>;
+export function useAtomSetDeferred<Value>(atom: Atom<Value>): AtomSetDeferredMethod<Value>;
+export function useAtomGet<Value>(atom: Atom<Value>): () => Value;
+
+/** get your custom actions */
+export function useAtomDo<Value, Actions extends Record<string, Function> = {}>(
+  atom: Atom<Value, Actions>,
+): Actions & DefaultActions<Value>;
 
 export type StoreKeyOrOptions<Value, Actions extends Record<string, Function> = {}> =
-  | `${string}${string}:${string}${string}`
+  | AtomStoreKey
   | AtomOptions<Value, Actions>;
 
 export function atom<Value, Actions extends Record<string, Function> = {}>(
@@ -96,4 +106,4 @@ export function atom<Value, Actions extends Record<string, Function> = {}>(
   storeKeyOrOptions?: StoreKeyOrOptions<Value, Actions>,
 ): Atom<Value, Actions>;
 
-export function configureAtomaric(hooks: { useSyncExternalStore: typeof useSyncExternalStore }): void;
+export function configureAtomaric(options: { useSyncExternalStore: typeof useSyncExternalStore }): void;
