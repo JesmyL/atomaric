@@ -126,7 +126,13 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
       updateCurrentValue(val);
       subscribers.forEach(invokeSubscriber, this);
 
-      if (isPreventSave !== true) save(val);
+      try {
+        updateHere.postMessage({ key, value: getCurrentValue() });
+      } catch (e) {}
+
+      if (isPreventSave !== true) {
+        save(val);
+      }
     };
     this.set = (value, isPreventSave) => set(value, isPreventSave);
 
@@ -154,6 +160,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
     let storeKey = null;
     let warnOnDuplicateStoreKey = true;
     let listenStorageChanges = true;
+    let isUnchangable = false;
 
     let parseValue: AtomOptions<Value, Actions>['parseValue'] =
       defaultValue instanceof Set ? strValue => new Set(JSON.parse(strValue)) : strValue => JSON.parse(strValue);
@@ -177,6 +184,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
 
       parseValue = storeKeyOrOptions.parseValue ?? parseValue;
       stringifyValue = storeKeyOrOptions.stringifyValue ?? stringifyValue;
+      isUnchangable = storeKeyOrOptions.unchangable ?? isUnchangable;
     }
 
     if (storeKey === null) return;
@@ -215,24 +223,48 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
     if (warnOnDuplicateStoreKey && update[key] !== undefined) console.warn('Duplicate Atom key', storeKey);
 
     if (listenStorageChanges) {
-      update[key] = event => {
-        if (event.newValue === null) {
-          this.reset();
-          return;
-        }
+      if (isUnchangable) {
+        let isCantChange = false;
+        let timeout: ReturnType<typeof setTimeout>;
 
-        try {
-          set(parseValue(event.newValue));
-        } catch (_e) {
-          console.warn('Invalid json value', event.newValue);
-        }
-      };
+        unchangableAtoms[key] = this as never;
+        update[key] = () => {
+          clearTimeout(timeout);
+          timeout = setTimeout(() => (isCantChange = false), 10);
+
+          if (isCantChange) return;
+          isCantChange = true;
+
+          localStorage[key] = stringifyValue(getCurrentValue());
+        };
+      } else
+        update[key] = event => {
+          if (event.newValue === null) {
+            this.reset();
+            return;
+          }
+
+          try {
+            set(parseValue(event.newValue));
+          } catch (_e) {
+            console.warn('Invalid json value', event.newValue);
+          }
+        };
     }
   }
 }
 
+let updateHere: BroadcastChannel;
+try {
+  updateHere = new BroadcastChannel('updateHere');
+  updateHere.addEventListener('message', event => {
+    unchangableAtoms[event.data.key]?.set(event.data.value, true);
+  });
+} catch (e) {}
+
 const localStorage = window.localStorage;
 const update: Partial<Record<string, (event: StorageEvent) => void>> = {};
+const unchangableAtoms: Partial<Record<string, Atom<unknown>>> = {};
 const itIt = <It>(it: It) => it;
 const fillActions = <Value>(actions: DefaultActions<Value>, _value: Value) => actions;
 
@@ -240,3 +272,15 @@ window.addEventListener('storage', event => {
   if (event.key === null || event.newValue === event.oldValue) return;
   update[event.key]?.(event);
 });
+
+const setItem = localStorage.setItem.bind(localStorage);
+const removeItem = localStorage.removeItem.bind(localStorage);
+
+localStorage.setItem = (key, value) => {
+  if (unchangableAtoms[key] !== undefined) return;
+  setItem.call(localStorage, key, value);
+};
+localStorage.removeItem = key => {
+  if (unchangableAtoms[key] !== undefined) return;
+  removeItem.call(localStorage, key);
+};

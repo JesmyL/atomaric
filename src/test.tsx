@@ -21,6 +21,7 @@ const testTextAtom = atom('', {
   storeKey: 'test:text',
   stringifyValue: value => JSON.stringify({ value }),
   parseValue: string => JSON.parse(string).value,
+  unchangable: true,
   do: (get, set) => ({
     addText: (text: string) => {
       set(get() + text);
