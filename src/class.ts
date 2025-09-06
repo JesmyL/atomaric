@@ -55,13 +55,13 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
         defaultActions = fillActions<any[]>(
           {
             push: (...values) => {
-              set([this.get()].flat().concat(values as never) as never);
+              set((this.get() as []).concat(values as never) as never);
             },
             unshift: (...values) => {
               set(values.concat(this.get()) as never);
             },
             update: updater => {
-              const newArray = [...(this.get() as never)];
+              const newArray = (this.get() as []).slice();
               updater(newArray);
               set(newArray as never);
             },
@@ -75,9 +75,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
         defaultActions = fillActions<Set<any>>(
           {
             add: value => {
-              const newSet = new Set(this.get() as never);
-              newSet.add(value);
-              set(newSet as never);
+              set(new Set(this.get() as never).add(value) as never);
             },
             delete: value => {
               const newSet = new Set(this.get() as never);
@@ -103,9 +101,19 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
               () => this.get(),
               (value, isPreventSave) => set(value, isPreventSave),
             )
-          : {};
+          : null;
 
-      const doActions = { ...actions, ...defaultActions };
+      const doActions = {};
+
+      if (actions)
+        Object.keys(actions).forEach(key =>
+          Object.defineProperty(doActions, key, { get: () => actions[key as never] }),
+        );
+
+      if (defaultActions)
+        Object.keys(defaultActions).forEach(key =>
+          Object.defineProperty(doActions, key, { get: () => defaultActions[key as never] }),
+        );
 
       doFiller = () => doActions;
 
