@@ -6,6 +6,7 @@ import {
   AtomSubscribeMethod,
   DefaultActions,
 } from '../types/model';
+import { makeDoFillerActions } from './makeDoFillerActions';
 
 type Subscriber<Value> = (value: Value) => void;
 
@@ -15,121 +16,34 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
   setDeferred: AtomSetDeferredMethod<Value>;
   reset: () => void;
   subscribe: AtomSubscribeMethod<Value>;
-  defaultValue!: Value;
+  defaultValue: Value;
   do!: Actions & DefaultActions<Value>;
 
-  constructor(defaultValue: Value, storeKeyOrOptions: AtomStoreKey | undefined | AtomOptions<Value, Actions>) {
+  constructor(defaultValue: Value, storeKeyOrOptions: AtomStoreKey | AtomOptions<Value, Actions> | undefined) {
+    const updateCurrentValue = (value: Value) => (______current_value_____ = value);
+    const getCurrentValue = () => ______current_value_____;
+    const subscribers = new Set<Subscriber<Value>>();
+    const invokeSubscriber = (sub: Subscriber<Value>) => sub(get());
+
     let ______current_value_____ = defaultValue;
     let debounceTimeout: ReturnType<typeof setTimeout> | undefined;
     let save: (val: Value) => void = () => {};
-
-    const updateCurrentValue = (value: Value) => (______current_value_____ = value);
-    const getCurrentValue = () => ______current_value_____;
-    this.get = () => getCurrentValue();
-
-    Object.defineProperty(this, 'do', { get: () => doFiller() });
-    Object.defineProperty(this, 'defaultValue', { get: () => defaultValue });
+    let get = () => getCurrentValue();
 
     let doFiller = () => {
-      let defaultActions: DefaultActions<any> | null = null;
-
-      if (typeof defaultValue === 'number') {
-        defaultActions = fillActions<number>(
-          {
-            increment: delta => {
-              set((+this.get() + (delta ?? 0)) as never);
-            },
-          },
-          defaultValue,
-        );
-      } else if (typeof defaultValue === 'boolean') {
-        defaultActions = fillActions<boolean>(
-          {
-            toggle: () => {
-              set(!this.get() as never);
-            },
-          },
-          defaultValue,
-        );
-      } else if (Array.isArray(defaultValue)) {
-        defaultActions = fillActions<any[]>(
-          {
-            push: (...values) => {
-              set((this.get() as []).concat(values as never) as never);
-            },
-            unshift: (...values) => {
-              set(values.concat(this.get()) as never);
-            },
-            update: updater => {
-              const newArray = (this.get() as []).slice();
-              updater(newArray);
-              set(newArray as never);
-            },
-            filter: filter => {
-              set((this.get() as []).filter(filter ?? itIt) as never);
-            },
-          },
-          defaultValue,
-        );
-      } else if (defaultValue instanceof Set) {
-        defaultActions = fillActions<Set<any>>(
-          {
-            add: value => {
-              set(new Set(this.get() as never).add(value) as never);
-            },
-            delete: value => {
-              const newSet = new Set(this.get() as never);
-              newSet.delete(value);
-              set(newSet as never);
-            },
-            clear: () => {
-              set(new Set() as never);
-            },
-            update: updater => {
-              const newSet = new Set(this.get() as never);
-              updater(newSet);
-              set(newSet as never);
-            },
-          },
-          defaultValue,
-        );
-      }
-
-      const actions =
-        typeof storeKeyOrOptions === 'object' && storeKeyOrOptions != null && 'do' in storeKeyOrOptions
-          ? storeKeyOrOptions.do(
-              () => this.get(),
-              (value, isPreventSave) => set(value, isPreventSave),
-            )
-          : null;
-
-      const doActions = {};
-
-      if (actions)
-        Object.keys(actions).forEach(key =>
-          Object.defineProperty(doActions, key, { get: () => actions[key as never] }),
-        );
-
-      if (defaultActions)
-        Object.keys(defaultActions).forEach(key =>
-          Object.defineProperty(doActions, key, { get: () => defaultActions[key as never] }),
-        );
-
+      const doActions = makeDoFillerActions<Value, Actions>(defaultValue, this, storeKeyOrOptions);
       doFiller = () => doActions;
-
       return doActions;
     };
 
-    const subscribers = new Set<Subscriber<Value>>();
-    const invokeSubscriber = (sub: Subscriber<Value>) => sub(this.get());
-    this.subscribe = sub => {
-      subscribers.add(sub);
-      return () => (subscribers.delete(sub), undefined);
-    };
+    const proxiedSelf = new Proxy(this, {
+      get: (self, prop) => (prop === 'do' ? doFiller() : self[prop as 'do']),
+      set: retFalse,
+    });
 
     const set: typeof this.set = (value, isPreventSave) => {
-      const val = typeof value === 'function' ? (value as (value: Value) => Value)(this.get()) : value;
-      if (val === this.get() || val === undefined || (typeof val === 'number' && isNaN(val))) return;
+      const val = typeof value === 'function' ? (value as (value: Value) => Value)(get()) : value;
+      if (val === get() || val === undefined || (typeof val === 'number' && isNaN(val))) return;
 
       updateCurrentValue(val);
       subscribers.forEach(invokeSubscriber, this);
@@ -142,7 +56,17 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
         save(val);
       }
     };
+
     this.set = (value, isPreventSave) => set(value, isPreventSave);
+    this.get = () => get();
+    this.defaultValue = defaultValue;
+
+    this.subscribe = sub => {
+      subscribers.add(sub);
+      return () => {
+        subscribers.delete(sub);
+      };
+    };
 
     this.reset = () => {
       set(defaultValue, true);
@@ -160,7 +84,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
       }, debounceMs);
     };
 
-    if (storeKeyOrOptions == null) return;
+    if (storeKeyOrOptions == null) return proxiedSelf;
     ////////////////////////
     //////////////////////// storaged value
     ////////////////////////
@@ -195,13 +119,13 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
       isUnchangable = storeKeyOrOptions.unchangable ?? isUnchangable;
     }
 
-    if (storeKey === null) return;
+    if (storeKey === null) return proxiedSelf;
 
     const key = `atom/${storeKey}`;
     let isInactualValue = true;
 
-    this.get = () => {
-      this.get = () => getCurrentValue();
+    get = () => {
+      get = () => getCurrentValue();
 
       if (isInactualValue) {
         isInactualValue = false;
@@ -259,6 +183,8 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
           }
         };
     }
+
+    return proxiedSelf;
   }
 }
 
@@ -273,8 +199,9 @@ try {
 const localStorage = window.localStorage;
 const update: Partial<Record<string, (event: StorageEvent) => void>> = {};
 const unchangableAtoms: Partial<Record<string, Atom<unknown>>> = {};
-const itIt = <It>(it: It) => it;
-const fillActions = <Value>(actions: DefaultActions<Value>, _value: Value) => actions;
+const retFalse = (_self: any, prop: string) => {
+  throw `${prop} is readonly property`;
+};
 
 window.addEventListener('storage', event => {
   if (event.key === null || event.newValue === event.oldValue) return;

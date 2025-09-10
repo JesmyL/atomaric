@@ -22,7 +22,10 @@ export type AtomOptions<Value, Actions extends Record<string, Function> = {}> = 
     }
   | {
       /** declare your custom actions */
-      do: (get: () => Value, set: (value: Value, isPreventSave?: boolean) => void) => Actions;
+      do: (
+        set: (value: Value | ((value: Value) => Value), isPreventSave?: boolean) => void,
+        get: () => Value,
+      ) => Actions;
     }
 );
 

@@ -12,8 +12,8 @@ createRoot(document.getElementById('root')!).render(
 
 const testAtom = atom(new Set<number>(), {
   storeKey: 'test:set',
-  do: (get, set) => ({
-    update12: () => set(new Set(get()).add(12)),
+  do: set => ({
+    update12: () => set(prev => new Set(prev).add(12)),
   }),
 });
 
@@ -22,9 +22,9 @@ const testTextAtom = atom('', {
   stringifyValue: value => JSON.stringify({ value }),
   parseValue: string => JSON.parse(string).value,
   unchangable: true,
-  do: (get, set) => ({
+  do: set => ({
     addText: (text: string) => {
-      set(get() + text);
+      set(prev => prev + text);
     },
   }),
 });
@@ -35,6 +35,9 @@ const arrayAtom = atom(array, {
     nothing: () => {},
   }),
 });
+
+console.log(Object.keys(arrayAtom));
+// arrayAtom.do.filter = {};
 
 console.info(arrayAtom);
 arrayAtom.do.push(0);
