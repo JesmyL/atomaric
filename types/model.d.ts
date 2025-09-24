@@ -25,6 +25,7 @@ export type AtomOptions<Value, Actions extends Record<string, Function> = {}> = 
       do: (
         set: (value: Value | ((value: Value) => Value), isPreventSave?: boolean) => void,
         get: () => Value,
+        setDeferred: (value: Value | ((value: Value) => Value), debounceMs?: number, isPreventSave?: boolean) => void,
       ) => Actions;
     }
 );

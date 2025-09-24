@@ -75,6 +75,7 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
       ? storeKeyOrOptions.do(
           (value, isPreventSave) => atom.set(value, isPreventSave),
           () => atom.get(),
+          (value, debounceMs, isPreventSave) => atom.setDeferred(value, debounceMs, isPreventSave),
         )
       : null;
 
