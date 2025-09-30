@@ -68,6 +68,17 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
       },
       defaultValue,
     );
+  } else if (defaultValue instanceof Object) {
+    defaultActions = fillActions<object>(
+      {
+        setPartial: value =>
+          atom.set(prev => ({
+            ...prev,
+            ...(typeof value === 'function' ? value(atom.get() as never) : value),
+          })),
+      },
+      defaultValue,
+    );
   }
 
   const actions =

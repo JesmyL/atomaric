@@ -48,6 +48,10 @@ export type NumberActions<Value> = {
   increment: (delta?: number) => void;
 };
 
+export type ObjectActions<Value> = {
+  setPartial: (value: Partial<Value> | ((value: Value) => Partial<Value>)) => void;
+};
+
 export type BooleanActions<Value> = {
   toggle: () => void;
 };
@@ -72,6 +76,8 @@ export type DefaultActions<Value> = Value extends Set<infer Val>
   ? ArrayActions<Val>
   : Value extends number
   ? NumberActions<Value>
+  : Value extends object
+  ? ObjectActions<Value>
   : {};
 
 export class Atom<Value, Actions extends Record<string, Function> = {}> {
