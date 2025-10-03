@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react';
+
 type Sunscriber<Value> = (value: Value) => void;
 
 export type AtomStoreKey = `${string}${string}:${string}${string}`;
@@ -25,6 +27,7 @@ export type AtomOptions<Value, Actions extends Record<string, Function> = {}> = 
       do: (
         set: (value: Value | ((value: Value) => Value), isPreventSave?: boolean) => void,
         get: () => Value,
+        self: Atom<Value>,
         setDeferred: (value: Value | ((value: Value) => Value), debounceMs?: number, isPreventSave?: boolean) => void,
       ) => Actions;
     }
@@ -41,37 +44,49 @@ export type AtomSetDeferredMethod<Value> = (
 export type AtomSubscribeMethod<Value> = (subscriber: Sunscriber<Value>) => () => void;
 
 export type UpdateAction<Value> = {
+  /** transform current taken value */
   update: (updater: (value: Value) => void) => void;
 };
 
 export type NumberActions<Value> = {
+  /** pass the 2 to increment on 2, pass the -2 to decrement on 2
+   * **default: 1**
+   */
   increment: (delta?: number) => void;
 };
 
 export type ObjectActions<Value> = {
+  /** pass partial object to update some fields */
   setPartial: (value: Partial<Value> | ((value: Value) => Partial<Value>)) => void;
 };
 
-export type BooleanActions<Value> = {
+export type BooleanActions = {
+  /** toggle current value between true/false */
   toggle: () => void;
 };
 
 export type SetActions<Value> = UpdateAction<Value> & {
+  /** like the Set.prototype.add() method */
   add: (value: Value) => void;
+  /** like the Set.prototype.delete() method */
   delete: (value: Value) => void;
+  /** like the Set.prototype.clear() method */
   clear: () => void;
 };
 
 export type ArrayActions<Value> = UpdateAction<Value[]> & {
+  /** like the Array.prototype.push() method */
   push: (...values: Value[]) => void;
+  /** like the Array.prototype.unshift() method */
   unshift: (...values: Value[]) => void;
+  /** like the Array.prototype.filter() method, but callback is optional - (it) => !!it */
   filter: (filter?: (value: Value, index: number, array: Value[]) => any) => void;
 };
 
 export type DefaultActions<Value> = Value extends Set<infer Val>
   ? SetActions<Val>
   : Value extends boolean
-  ? BooleanActions<Value>
+  ? BooleanActions
   : Value extends (infer Val)[]
   ? ArrayActions<Val>
   : Value extends number
@@ -80,19 +95,25 @@ export type DefaultActions<Value> = Value extends Set<infer Val>
   ? ObjectActions<Value>
   : {};
 
-export class Atom<Value, Actions extends Record<string, Function> = {}> {
-  constructor(defaultValue: Value, storeKeyOrOptions: StoreKeyOrOptions<Value, Actions> | undefined);
+declare class Atom<Value, Actions extends Record<string, Function> = {}> {
+  constructor(initialValue: Value, storeKeyOrOptions: StoreKeyOrOptions<Value, Actions> | undefined);
 
-  readonly defaultValue: Value;
+  /** initial value */
+  readonly initialValue: Value;
+  /** get current value */
   readonly get: () => Value;
+  /** set current value */
   readonly set: AtomSetMethod<Value>;
+  /** set current value with debounce */
   readonly setDeferred: AtomSetDeferredMethod<Value>;
-  /** set default (initial) value as current */
+  /** set current value as default (initial) */
   readonly reset: () => void;
   /** subscribe on value changes */
   readonly subscribe: AtomSubscribeMethod<Value>;
   /** your custom actions */
   readonly do: Actions & DefaultActions<Value>;
+  /** check is current value not changed */
+  readonly isInitialValue: () => boolean;
 }
 
 export function useAtom<Value>(atom: Atom<Value>): [Value, AtomSetMethod<Value>];
@@ -118,4 +139,5 @@ export function atom<Value, Actions extends Record<string, Function> = {}>(
   storeKeyOrOptions?: StoreKeyOrOptions<Value, Actions>,
 ): Atom<Value, Actions>;
 
+/** invoke this function before all atom usages */
 export function configureAtomaric(options: { useSyncExternalStore: typeof useSyncExternalStore }): void;

@@ -4,34 +4,36 @@ import {
   AtomSetMethod,
   AtomStoreKey,
   AtomSubscribeMethod,
+  Atom as AtomType,
   DefaultActions,
 } from '../types/model';
 import { makeDoFillerActions } from './makeDoFillerActions';
 
 type Subscriber<Value> = (value: Value) => void;
 
-export class Atom<Value, Actions extends Record<string, Function> = {}> {
-  get: () => Value;
+export class Atom<Value, Actions extends Record<string, Function> = {}> implements AtomType<Value, Actions> {
+  get;
   set: AtomSetMethod<Value>;
   setDeferred: AtomSetDeferredMethod<Value>;
   reset: () => void;
   subscribe: AtomSubscribeMethod<Value>;
-  defaultValue: Value;
+  initialValue;
+  isInitialValue;
   do!: Actions & DefaultActions<Value>;
 
-  constructor(defaultValue: Value, storeKeyOrOptions: AtomStoreKey | AtomOptions<Value, Actions> | undefined) {
+  constructor(initialValue: Value, storeKeyOrOptions: AtomStoreKey | AtomOptions<Value, Actions> | undefined) {
     const updateCurrentValue = (value: Value) => (______current_value_____ = value);
     const getCurrentValue = () => ______current_value_____;
     const subscribers = new Set<Subscriber<Value>>();
     const invokeSubscriber = (sub: Subscriber<Value>) => sub(get());
 
-    let ______current_value_____ = defaultValue;
+    let ______current_value_____ = initialValue;
     let debounceTimeout: ReturnType<typeof setTimeout> | undefined;
     let save: (val: Value) => void = () => {};
     let get = () => getCurrentValue();
 
     let doFiller = () => {
-      const doActions = makeDoFillerActions<Value, Actions>(defaultValue, this, storeKeyOrOptions);
+      const doActions = makeDoFillerActions<Value, Actions>(initialValue, this, storeKeyOrOptions);
       doFiller = () => doActions;
       return doActions;
     };
@@ -59,7 +61,8 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
 
     this.set = (value, isPreventSave) => set(value, isPreventSave);
     this.get = () => get();
-    this.defaultValue = defaultValue;
+    this.initialValue = initialValue;
+    this.isInitialValue = () => initialValue === getCurrentValue();
 
     this.subscribe = sub => {
       subscribers.add(sub);
@@ -69,7 +72,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
     };
 
     this.reset = () => {
-      set(defaultValue, true);
+      set(initialValue, true);
       subscribers.forEach(invokeSubscriber, this);
     };
 
@@ -95,10 +98,10 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
     let isUnchangable = false;
 
     let parseValue: AtomOptions<Value, Actions>['parseValue'] =
-      defaultValue instanceof Set ? strValue => new Set(JSON.parse(strValue)) : strValue => JSON.parse(strValue);
+      initialValue instanceof Set ? strValue => new Set(JSON.parse(strValue)) : strValue => JSON.parse(strValue);
 
     let stringifyValue: AtomOptions<Value, Actions>['stringifyValue'] =
-      defaultValue instanceof Set
+      initialValue instanceof Set
         ? val => {
             if (val instanceof Set) return JSON.stringify(Array.from(val));
 
@@ -130,7 +133,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
       if (isInactualValue) {
         isInactualValue = false;
         try {
-          updateCurrentValue(key in localStorage ? parseValue(localStorage[key]) : defaultValue);
+          updateCurrentValue(key in localStorage ? parseValue(localStorage[key]) : initialValue);
         } catch (e) {
           console.warn('Invalid json value', localStorage[key]);
         }
@@ -140,7 +143,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
     };
 
     save = value => {
-      if (value === defaultValue) {
+      if (value === initialValue) {
         this.reset();
         return;
       }
@@ -149,7 +152,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> {
 
     this.reset = () => {
       delete localStorage[key];
-      set(defaultValue, true);
+      set(initialValue, true);
     };
 
     if (warnOnDuplicateStoreKey && update[key] !== undefined) console.warn('Duplicate Atom key', storeKey);

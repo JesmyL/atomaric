@@ -2,31 +2,31 @@ import { Atom } from 'class';
 import { AtomOptions, AtomStoreKey, DefaultActions } from '../types/model';
 
 export const makeDoFillerActions = <Value, Actions extends Record<string, Function>>(
-  defaultValue: Value,
+  initialValue: Value,
   atom: Atom<Value, Actions>,
   storeKeyOrOptions: AtomStoreKey | AtomOptions<Value, Actions> | undefined,
 ) => {
   let defaultActions: DefaultActions<any> | null = null;
 
-  if (typeof defaultValue === 'number') {
+  if (typeof initialValue === 'number') {
     defaultActions = fillActions<number>(
       {
         increment: delta => {
           atom.set((+atom.get() + (delta ?? 0)) as never);
         },
       },
-      defaultValue,
+      initialValue,
     );
-  } else if (typeof defaultValue === 'boolean') {
+  } else if (typeof initialValue === 'boolean') {
     defaultActions = fillActions<boolean>(
       {
         toggle: () => {
           atom.set(!atom.get() as never);
         },
       },
-      defaultValue,
+      initialValue,
     );
-  } else if (Array.isArray(defaultValue)) {
+  } else if (Array.isArray(initialValue)) {
     defaultActions = fillActions<any[]>(
       {
         push: (...values) => {
@@ -44,9 +44,9 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
           atom.set((atom.get() as []).filter(filter ?? itIt) as never);
         },
       },
-      defaultValue,
+      initialValue,
     );
-  } else if (defaultValue instanceof Set) {
+  } else if (initialValue instanceof Set) {
     defaultActions = fillActions<Set<any>>(
       {
         add: value => {
@@ -66,9 +66,9 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
           atom.set(newSet as never);
         },
       },
-      defaultValue,
+      initialValue,
     );
-  } else if (defaultValue instanceof Object) {
+  } else if (initialValue instanceof Object) {
     defaultActions = fillActions<object>(
       {
         setPartial: value =>
@@ -77,7 +77,7 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
             ...(typeof value === 'function' ? value(atom.get() as never) : value),
           })),
       },
-      defaultValue,
+      initialValue,
     );
   }
 
@@ -86,6 +86,7 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
       ? storeKeyOrOptions.do(
           (value, isPreventSave) => atom.set(value, isPreventSave),
           () => atom.get(),
+          this as never,
           (value, debounceMs, isPreventSave) => atom.setDeferred(value, debounceMs, isPreventSave),
         )
       : null;
