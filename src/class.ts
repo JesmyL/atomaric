@@ -33,7 +33,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
     let get = () => getCurrentValue();
 
     let doFiller = () => {
-      const doActions = makeDoFillerActions<Value, Actions>(initialValue, this, storeKeyOrOptions);
+      const doActions = makeDoFillerActions<Value, Actions>(initialValue, proxiedSelf, storeKeyOrOptions);
       doFiller = () => doActions;
       return doActions;
     };
