@@ -11,12 +11,16 @@ export type AtomOptions<Value, Actions extends Record<string, Function> = {}> = 
    * **default: true**
    */
   listenStorageChanges?: boolean;
-  /** map localStorage string value to Value */
-  parseValue?: (stringifiedValue: string) => Value;
-  /** map Value to localStorage string value */
-  stringifyValue?: (value: Value) => string;
+
+  /** zip Value to stringifiable value */
+  zipValue?: (value: Value) => any;
+  /** unzip stringifiable value to Value */
+  unzipValue?: (packedValue: any) => Value;
+
   /** make your localStorage value unchangable */
   unchangable?: true;
+  /** return value expire Date */
+  exp?: () => Date;
 } & (
   | {
       /** save in localStorage by this key */

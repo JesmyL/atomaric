@@ -11,6 +11,8 @@ import { makeDoFillerActions } from './makeDoFillerActions';
 
 type Subscriber<Value> = (value: Value) => void;
 
+type Tools = { exp?: number };
+
 export class Atom<Value, Actions extends Record<string, Function> = {}> implements AtomType<Value, Actions> {
   get;
   set: AtomSetMethod<Value>;
@@ -28,9 +30,10 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
     const invokeSubscriber = (sub: Subscriber<Value>) => sub(get());
 
     let ______current_value_____ = initialValue;
-    let debounceTimeout: ReturnType<typeof setTimeout> | undefined;
+    let debounceTimeout: ReturnType<typeof setTimeout> | number | undefined;
     let save: (val: Value) => void = () => {};
     let get = () => getCurrentValue();
+    let tools: Tools | null | undefined = null;
 
     let doFiller = () => {
       const doActions = makeDoFillerActions<Value, Actions>(initialValue, proxiedSelf, storeKeyOrOptions);
@@ -54,9 +57,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
         updateHere.postMessage({ key, value: getCurrentValue() });
       } catch (e) {}
 
-      if (isPreventSave !== true) {
-        save(val);
-      }
+      if (isPreventSave !== true) save(val);
     };
 
     this.set = (value, isPreventSave) => set(value, isPreventSave);
@@ -76,39 +77,41 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
       subscribers.forEach(invokeSubscriber, this);
     };
 
+    const deferredTimeOut = (value: Value, isPreventSave: boolean) => {
+      set(value, isPreventSave);
+      debounceTimeout = undefined;
+    };
+
     this.setDeferred = (value, debounceMs = 500, isPreventSave, isInitInvoke = true) => {
       if (isInitInvoke && debounceTimeout === undefined) set(value, isPreventSave);
-
       clearTimeout(debounceTimeout);
-
-      debounceTimeout = setTimeout(() => {
-        set(value, isPreventSave);
-        debounceTimeout = undefined;
-      }, debounceMs);
+      debounceTimeout = setTimeout(deferredTimeOut, debounceMs, value, isPreventSave);
     };
 
     if (storeKeyOrOptions == null) return proxiedSelf;
+
     ////////////////////////
     //////////////////////// storaged value
     ////////////////////////
 
     let storeKey = null;
+    let exp = null;
     let warnOnDuplicateStoreKey = true;
     let listenStorageChanges = true;
     let isUnchangable = false;
 
-    let parseValue: AtomOptions<Value, Actions>['parseValue'] =
-      initialValue instanceof Set ? strValue => new Set(JSON.parse(strValue)) : strValue => JSON.parse(strValue);
+    let unzipValue: AtomOptions<Value, Actions>['unzipValue'] =
+      initialValue instanceof Set ? strValue => new Set(strValue) : val => val;
 
-    let stringifyValue: AtomOptions<Value, Actions>['stringifyValue'] =
+    let zipValue: AtomOptions<Value, Actions>['zipValue'] =
       initialValue instanceof Set
         ? val => {
-            if (val instanceof Set) return JSON.stringify(Array.from(val));
+            if (val instanceof Set) return Array.from(val);
 
             console.error(val);
             throw 'The value is not Set instance';
           }
-        : value => JSON.stringify(value);
+        : val => val;
 
     if (typeof storeKeyOrOptions === 'string') {
       storeKey = storeKeyOrOptions;
@@ -117,18 +120,44 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
       listenStorageChanges = storeKeyOrOptions.listenStorageChanges ?? listenStorageChanges;
       storeKey = storeKeyOrOptions.storeKey;
 
-      parseValue = storeKeyOrOptions.parseValue ?? parseValue;
-      stringifyValue = storeKeyOrOptions.stringifyValue ?? stringifyValue;
+      unzipValue = storeKeyOrOptions.unzipValue ?? unzipValue;
+      zipValue = storeKeyOrOptions.zipValue ?? zipValue;
       isUnchangable = storeKeyOrOptions.unchangable ?? isUnchangable;
-    }
+      exp = storeKeyOrOptions.exp ?? exp;
+    } else return proxiedSelf;
 
-    if (storeKey === null) return proxiedSelf;
+    const stringifyValue =
+      exp === null || !(exp() instanceof Date)
+        ? (value: Value) => JSON.stringify([zipValue(value)])
+        : (value: Value) => {
+            tools ??= {};
+            tools.exp = exp().getTime();
 
-    const key = `atom/${storeKey}`;
+            return JSON.stringify([zipValue(value), tools]);
+          };
+
+    const parseValue = (value: string): Value => {
+      const val = JSON.parse(value);
+      tools = val[1];
+
+      if (tools != null && tools.exp != null && tools.exp < Date.now()) {
+        this.reset();
+        return initialValue;
+      }
+
+      return unzipValue(val[0]);
+    };
+
+    const key = `atom\\${storeKey}`;
     let isInactualValue = true;
 
+    if (localStorage[`atom/${storeKey}`]) {
+      this.set(parseValue(`[${localStorage[`atom/${storeKey}`]}]`));
+      delete localStorage[`atom/${storeKey}`];
+    }
+
     get = () => {
-      get = () => getCurrentValue();
+      get = getCurrentValue;
 
       if (isInactualValue) {
         isInactualValue = false;

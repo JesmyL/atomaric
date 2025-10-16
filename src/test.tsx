@@ -19,9 +19,12 @@ const testAtom = atom(new Set<number>(), {
 
 const testTextAtom = atom('', {
   storeKey: 'test:text',
-  stringifyValue: value => JSON.stringify({ value }),
-  parseValue: string => JSON.parse(string).value,
   unchangable: true,
+  exp: () => new Date(Date.now() + 3 * 1000),
+
+  zipValue: value => ({ value }),
+  unzipValue: val => val.value,
+
   do: set => ({
     addText: (text: string) => {
       set(prev => prev + text);
