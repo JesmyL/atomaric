@@ -57,6 +57,14 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
           newSet.delete(value);
           atom.set(newSet as never);
         },
+        toggle: value => {
+          const newSet = new Set(atom.get() as never);
+
+          if (newSet.has(value)) newSet.delete(value);
+          else newSet.add(value);
+
+          atom.set(newSet as never);
+        },
         clear: () => {
           atom.set(new Set() as never);
         },

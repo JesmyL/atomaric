@@ -74,6 +74,8 @@ export type SetActions<Value> = UpdateAction<Value> & {
   add: (value: Value) => void;
   /** like the Set.prototype.delete() method */
   delete: (value: Value) => void;
+  /** will add value if it doesn't exist, otherwise delete */
+  toggle: (value: Value) => void;
   /** like the Set.prototype.clear() method */
   clear: () => void;
 };
