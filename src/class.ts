@@ -152,7 +152,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
     let isInactualValue = true;
 
     if (localStorage[`atom/${storeKey}`]) {
-      this.set(parseValue(`[${localStorage[`atom/${storeKey}`]}]`));
+      localStorage[key] ||= `[${localStorage[`atom/${storeKey}`]}]`;
       delete localStorage[`atom/${storeKey}`];
     }
 
