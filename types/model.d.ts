@@ -20,7 +20,7 @@ export type AtomOptions<Value, Actions extends Record<string, Function> = {}> = 
   /** make your localStorage value unchangable */
   unchangable?: true;
   /** return value expire Date */
-  exp?: () => Date;
+  exp?: (self: Atom<Value>, isValueWasStoraged: boolean) => Date;
 } & (
   | {
       /** save in localStorage by this key */
@@ -59,7 +59,7 @@ export type NumberActions<Value> = {
   increment: (delta?: number) => void;
 };
 
-export type ObjectActions<Value> = {
+export type ObjectActions<Value> = UpdateAction<Value> & {
   /** pass partial object to update some fields */
   setPartial: (value: Partial<Value> | ((value: Value) => Partial<Value>)) => void;
 };
@@ -87,6 +87,8 @@ export type ArrayActions<Value> = UpdateAction<Value[]> & {
   unshift: (...values: Value[]) => void;
   /** like the Array.prototype.filter() method, but callback is optional - (it) => !!it */
   filter: (filter?: (value: Value, index: number, array: Value[]) => any) => void;
+  /** will add value if it doesn't exist, otherwise delete */
+  toggle: (value: Value, isAddInStart?: boolean) => void;
 };
 
 export type DefaultActions<Value> = Value extends Set<infer Val>

@@ -10,81 +10,100 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
 
   if (typeof initialValue === 'number') {
     defaultActions = fillActions<number>(
-      {
+      atom as never,
+      atom => ({
         increment: delta => {
-          atom.set((+atom.get() + (delta ?? 0)) as never);
+          atom.set(+atom.get() + (delta ?? 0));
         },
-      },
+      }),
       initialValue,
     );
   } else if (typeof initialValue === 'boolean') {
     defaultActions = fillActions<boolean>(
-      {
+      atom as never,
+      atom => ({
         toggle: () => {
-          atom.set(!atom.get() as never);
+          atom.set(!atom.get());
         },
-      },
+      }),
       initialValue,
     );
   } else if (Array.isArray(initialValue)) {
     defaultActions = fillActions<any[]>(
-      {
+      atom as never,
+      atom => ({
         push: (...values) => {
-          atom.set((atom.get() as []).concat(values as never) as never);
+          atom.set(atom.get().concat(values));
         },
         unshift: (...values) => {
-          atom.set(values.concat(atom.get()) as never);
+          atom.set(values.concat(atom.get()));
         },
         update: updater => {
-          const newArray = (atom.get() as []).slice();
+          const newArray = atom.get().slice();
           updater(newArray);
-          atom.set(newArray as never);
+          atom.set(newArray);
         },
         filter: filter => {
-          atom.set((atom.get() as []).filter(filter ?? itIt) as never);
+          atom.set(atom.get().filter(filter ?? itIt));
         },
-      },
+        toggle: (value, isAddInStart) => {
+          const newArray = atom.get().slice();
+          const index = newArray.indexOf(value);
+          if (index < 0) {
+            if (isAddInStart) newArray.unshift(value);
+            else newArray.push(value);
+          } else newArray.splice(index, 1);
+          atom.set(newArray);
+        },
+      }),
       initialValue,
     );
   } else if (initialValue instanceof Set) {
     defaultActions = fillActions<Set<any>>(
-      {
+      atom as never,
+      atom => ({
         add: value => {
-          atom.set(new Set(atom.get() as never).add(value) as never);
+          atom.set(new Set(atom.get()).add(value));
         },
         delete: value => {
-          const newSet = new Set(atom.get() as never);
+          const newSet = new Set(atom.get());
           newSet.delete(value);
-          atom.set(newSet as never);
+          atom.set(newSet);
         },
         toggle: value => {
-          const newSet = new Set(atom.get() as never);
+          const newSet = new Set(atom.get());
 
           if (newSet.has(value)) newSet.delete(value);
           else newSet.add(value);
 
-          atom.set(newSet as never);
+          atom.set(newSet);
         },
         clear: () => {
-          atom.set(new Set() as never);
+          atom.set(new Set());
         },
         update: updater => {
-          const newSet = new Set(atom.get() as never);
+          const newSet = new Set(atom.get());
           updater(newSet);
-          atom.set(newSet as never);
+          atom.set(newSet);
         },
-      },
+      }),
       initialValue,
     );
   } else if (initialValue instanceof Object) {
     defaultActions = fillActions<object>(
-      {
+      atom as never,
+      atom => ({
         setPartial: value =>
           atom.set(prev => ({
             ...prev,
-            ...(typeof value === 'function' ? value(atom.get() as never) : value),
+            ...(typeof value === 'function' ? value(atom.get()) : value),
           })),
-      },
+        update: updater => {
+          const newSet = { ...atom.get() };
+          updater(newSet);
+          atom.set(newSet);
+        },
+      }),
       initialValue,
     );
   }
@@ -101,8 +120,7 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
 
   const doActions = {};
 
-  if (actions)
-    Object.keys(actions).forEach(key => Object.defineProperty(doActions, key, { get: () => actions[key as never] }));
+  if (actions) Object.keys(actions).forEach(key => Object.defineProperty(doActions, key, { get: () => actions[key] }));
 
   if (defaultActions)
     Object.keys(defaultActions).forEach(key =>
@@ -113,4 +131,8 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
 };
 
 const itIt = <It>(it: It) => it;
-const fillActions = <Value>(actions: DefaultActions<Value>, _value: Value) => actions;
+const fillActions = <Value, ValAtom extends Atom<Value> = Atom<Value>>(
+  atom: ValAtom,
+  actions: (atom: ValAtom) => DefaultActions<Value>,
+  _value: Value,
+) => actions(atom);

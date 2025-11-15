@@ -99,6 +99,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
     let warnOnDuplicateStoreKey = true;
     let listenStorageChanges = true;
     let isUnchangable = false;
+    let expTimeout = -1 as never as ReturnType<typeof setTimeout>;
 
     let unzipValue: AtomOptions<Value, Actions>['unzipValue'] =
       initialValue instanceof Set ? strValue => new Set(strValue) : val => val;
@@ -126,12 +127,19 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
       exp = storeKeyOrOptions.exp ?? exp;
     } else return proxiedSelf;
 
+    const key = `${prefix}${storeKey}`;
     const stringifyValue =
-      exp === null || !(exp() instanceof Date)
+      exp === null || !(exp(proxiedSelf, key in localStorage) instanceof Date)
         ? (value: Value) => JSON.stringify([zipValue(value)])
         : (value: Value) => {
             tools ??= {};
-            tools.exp = exp().getTime();
+            tools.exp = exp(proxiedSelf, key in localStorage).getTime() + 0.2866;
+
+            if (tools.exp - Date.now() < 24 * 60 * 60 * 1000) {
+              clearTimeout(expTimeout);
+              clearTimeout(initResetTimeouts[key]);
+              expTimeout = setTimeout(() => this.reset(), tools.exp - Date.now());
+            }
 
             return JSON.stringify([zipValue(value), tools]);
           };
@@ -140,16 +148,11 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
       const val = JSON.parse(value);
       tools = val[1];
 
-      if (tools != null && tools.exp != null && tools.exp < Date.now()) {
-        this.reset();
-        return initialValue;
-      }
-
       return unzipValue(val[0]);
     };
 
-    const key = `atom\\${storeKey}`;
     let isInactualValue = true;
+    registeredAtoms[key] = proxiedSelf;
 
     if (localStorage[`atom/${storeKey}`]) {
       localStorage[key] ||= `[${localStorage[`atom/${storeKey}`]}]`;
@@ -251,3 +254,21 @@ localStorage.removeItem = key => {
   if (unchangableAtoms[key] !== undefined) return;
   removeItem.call(localStorage, key);
 };
+const expMatcherReg = /"exp":(\d+)\.2866/;
+const prefix = `atom\\`;
+const registeredAtoms: Record<string, Atom<any>> = {};
+const initResetTimeouts: Record<string, ReturnType<typeof setTimeout>> = {};
+
+setTimeout(() => {
+  Object.keys(localStorage).forEach(key => {
+    if (!key.startsWith(prefix) || typeof localStorage[key] !== 'string') return;
+    const ts = +localStorage[key].match(expMatcherReg)?.[1]!;
+
+    if (ts && ts - Date.now() < 24 * 60 * 60 * 1000) {
+      initResetTimeouts[key] = setTimeout(() => {
+        if (registeredAtoms[key]) registeredAtoms[key].reset();
+        else delete localStorage[key];
+      }, ts - Date.now());
+    }
+  });
+}, 1000);
