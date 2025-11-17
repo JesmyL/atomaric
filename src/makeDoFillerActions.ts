@@ -103,6 +103,31 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
           updater(newSet);
           atom.set(newSet);
         },
+        setDeepPartial: (path: string, value, separator = '.' as never) => {
+          if (path.includes(separator)) {
+            let parts = path.split(separator);
+            const lastKey = parts[parts.length - 1];
+            parts = parts.slice(0, -1);
+            const newObject = { ...atom.get() };
+            let lastObject: object = newObject;
+
+            for (const part of parts) {
+              const currentObject = lastObject[part as never] as object;
+
+              if (currentObject == null || typeof currentObject !== 'object') {
+                atom.do.setPartial({ [path]: value });
+                return;
+              }
+
+              lastObject = lastObject[part as never] = (
+                Array.isArray(currentObject) ? [...currentObject] : { ...currentObject }
+              ) as never;
+            }
+
+            lastObject[lastKey as never] = value as never;
+            atom.set(newObject);
+          } else atom.do.setPartial({ [path]: value });
+        },
       }),
       initialValue,
     );

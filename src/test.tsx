@@ -57,6 +57,17 @@ atom(0, 'a:a');
 atom(0, { storeKey: 'a:a' });
 atom(0, { storeKey: 'a:a', warnOnDuplicateStoreKey: false });
 
+(function testDeepPartialChanges() {
+  const a = { f: { g: '' } };
+  const b = { c: [{ d: 8, e: 'e', f: 'F' }] };
+  const deepTest = atom({ a, b });
+
+  deepTest.do.setDeepPartial('b.c.0.d', 123);
+  deepTest.do.setDeepPartial('b+c+8+e', 'EE', '+');
+
+  console.log(deepTest.get(), deepTest.get().a.f === a.f, deepTest.get().b.c === b.c);
+})();
+
 function App() {
   const test = useAtomValue(testAtom);
   const testText = useAtomValue(testTextAtom);

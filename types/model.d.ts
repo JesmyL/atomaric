@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { Path, PathValue } from '../src/model';
 
 type Sunscriber<Value> = (value: Value) => void;
 
@@ -60,8 +61,18 @@ export type NumberActions<Value> = {
 };
 
 export type ObjectActions<Value> = UpdateAction<Value> & {
-  /** pass partial object to update some fields */
+  /** pass partial object to update some field values */
   setPartial: (value: Partial<Value> | ((value: Value) => Partial<Value>)) => void;
+  /** pass partial value to update some deep values by flat path */
+  setDeepPartial: <
+    ValuePath extends Path<Value, Sep>,
+    Val extends PathValue<Value, Sep, ValuePath>,
+    Sep extends string = '.',
+  >(
+    path: ValuePath,
+    value: Partial<Val> | ((value: Val) => Partial<Val>),
+    separator?: Sep,
+  ) => void;
 };
 
 export type BooleanActions = {
