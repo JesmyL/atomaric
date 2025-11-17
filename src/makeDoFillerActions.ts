@@ -115,7 +115,7 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
               const currentObject = lastObject[part as never] as object;
 
               if (currentObject == null || typeof currentObject !== 'object') {
-                atom.do.setPartial({ [path]: value });
+                atom.do.setPartial({ [path]: typeof value === 'function' ? value(undefined!) : value });
                 return;
               }
 
@@ -124,7 +124,10 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
               ) as never;
             }
 
-            lastObject[lastKey as never] = value as never;
+            lastObject[lastKey as never] = (
+              typeof value === 'function' ? value(lastObject[lastKey as never]) : value
+            ) as never;
+
             atom.set(newObject);
           } else atom.do.setPartial({ [path]: value });
         },

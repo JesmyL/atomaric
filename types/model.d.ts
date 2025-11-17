@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { Path, PathValue } from '../src/model';
+import { Path, PathValue } from './paths';
 
 type Sunscriber<Value> = (value: Value) => void;
 
