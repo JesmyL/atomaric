@@ -8,7 +8,7 @@ import {
   useAtomSet as useAtomSetType,
   useAtom as useAtomType,
   useAtomValue as useAtomValueType,
-} from '../types/model';
+} from '../types';
 import { Atom } from './class';
 
 let useSyncExtStore = (() => {

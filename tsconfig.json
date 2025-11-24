@@ -18,5 +18,5 @@
     "baseUrl": "src",
     "paths": {}
   },
-  "include": ["src", "vite-env.d.ts", "types/model.d.ts", "src/index.ts", "types/paths.ts"]
+  "include": ["src", "vite-env.d.ts", "types/index.d.ts", "src/index.ts", "types/paths.ts"]
 }

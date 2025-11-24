@@ -6,7 +6,7 @@ import {
   AtomSubscribeMethod,
   Atom as AtomType,
   DefaultActions,
-} from '../types/model';
+} from '../types';
 import { makeDoFillerActions } from './makeDoFillerActions';
 
 type Subscriber<Value> = (value: Value) => void;

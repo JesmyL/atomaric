@@ -5,10 +5,10 @@
   "type": "module",
   "main": "./build/atomaric.umd.cjs",
   "module": "./build/atomaric.js",
-  "types": "./types/model.d.ts",
+  "types": "./types/index.d.ts",
   "exports": {
     ".": {
-      "types": "./types/model.d.ts",
+      "types": "./types/index.d.ts",
       "require": "./build/atomaric.umd.cjs",
       "import": "./build/atomaric.js"
     }

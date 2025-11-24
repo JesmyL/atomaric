@@ -2,7 +2,7 @@ import React, { useEffect, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
 import { atom, configureAtomaric, useAtomDo, useAtomValue } from './lib';
 
-configureAtomaric({ useSyncExternalStore });
+configureAtomaric({ useSyncExternalStore, keyPathSeparator: '.' });
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

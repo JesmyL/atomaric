@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react';
-import { Path, PathValue } from './paths';
+import { Path, TPathValue } from './paths';
+
+export interface Register {}
 
 type Sunscriber<Value> = (value: Value) => void;
 
@@ -66,14 +68,20 @@ export type ObjectActions<Value> = UpdateAction<Value> & {
   /** pass partial value to update some deep values by flat path */
   setDeepPartial: <
     ValuePath extends Path<Value, Sep>,
-    Val extends PathValue<Value, Sep, ValuePath>,
-    Sep extends string = '.',
+    Val extends TPathValue<Value, Sep, ValuePath>,
+    Sep extends string = ObjectActionsSetDeepPartial,
   >(
     path: ValuePath,
     value: Partial<Val> | ((value: Val) => Partial<Val>),
     separator?: Sep,
   ) => void;
 };
+
+export type ObjectActionsSetDeepPartial = Register extends {
+  keyPathSeparator: infer Separator extends string;
+}
+  ? Separator
+  : '.';
 
 export type BooleanActions = {
   /** toggle current value between true/false */
@@ -159,4 +167,7 @@ export function atom<Value, Actions extends Record<string, Function> = {}>(
 ): Atom<Value, Actions>;
 
 /** invoke this function before all atom usages */
-export function configureAtomaric(options: { useSyncExternalStore: typeof useSyncExternalStore }): void;
+export function configureAtomaric(options: {
+  useSyncExternalStore: typeof useSyncExternalStore;
+  keyPathSeparator: ObjectActionsSetDeepPartial;
+}): void;

@@ -1,5 +1,5 @@
 import { Atom } from 'class';
-import { AtomOptions, AtomStoreKey, DefaultActions } from '../types/model';
+import { AtomOptions, AtomStoreKey, DefaultActions } from '../types';
 
 export const makeDoFillerActions = <Value, Actions extends Record<string, Function>>(
   initialValue: Value,
