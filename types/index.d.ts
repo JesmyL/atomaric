@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { Path, TPathValue } from './paths';
+import { Path, PathValue, PathValueDonor } from './paths';
 
 export interface Register {}
 
@@ -68,11 +68,12 @@ export type ObjectActions<Value> = UpdateAction<Value> & {
   /** pass partial value to update some deep values by flat path */
   setDeepPartial: <
     ValuePath extends Path<Value, Sep>,
-    Val extends TPathValue<Value, Sep, ValuePath>,
+    Val extends PathValue<Value, Sep, ValuePath>,
     Sep extends string = ObjectActionsSetDeepPartial,
   >(
     path: ValuePath,
-    value: Partial<Val> | ((value: Val) => Partial<Val>),
+    value: Val | ((value: Val) => Val),
+    donor: PathValueDonor<Value, Sep, ValuePath> | null,
     separator?: Sep,
   ) => void;
 };

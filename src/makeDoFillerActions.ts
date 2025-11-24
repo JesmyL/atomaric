@@ -2,6 +2,8 @@ import { Atom } from 'class';
 import { AtomOptions, AtomStoreKey, DefaultActions } from '../types';
 import { configuredOptions } from './lib';
 
+type nil = null | undefined;
+
 export const makeDoFillerActions = <Value, Actions extends Record<string, Function>>(
   initialValue: Value,
   atom: Atom<Value, Actions>,
@@ -104,30 +106,41 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
           updater(newSet);
           atom.set(newSet);
         },
-        setDeepPartial: (path: string, value, separator = (configuredOptions.keyPathSeparator ?? '.') as never) => {
+        setDeepPartial: (
+          path: string,
+          value,
+          donor,
+          separator = (configuredOptions.keyPathSeparator ?? '.') as never,
+        ) => {
           if (path.includes(separator)) {
             let parts = path.split(separator);
             const lastKey = parts[parts.length - 1];
             parts = parts.slice(0, -1);
             const newObject = { ...atom.get() };
-            let lastObject: object = newObject;
+            let lastObject: Record<string, unknown> = newObject;
+            let lastDonorObject: Record<string, unknown> | nil = donor;
 
             for (const part of parts) {
-              const currentObject = lastObject[part as never] as object;
+              let currentObject = lastObject[part];
+              const currentDonorObject = (lastDonorObject = lastDonorObject?.[
+                Array.isArray(lastDonorObject) ? '0' : part
+              ] as never);
+
+              if (currentObject == null) {
+                currentObject = Array.isArray(currentDonorObject) ? [] : {};
+              }
 
               if (currentObject == null || typeof currentObject !== 'object') {
                 atom.do.setPartial({ [path]: typeof value === 'function' ? value(undefined!) : value });
                 return;
               }
 
-              lastObject = lastObject[part as never] = (
+              lastObject = lastObject[part] = (
                 Array.isArray(currentObject) ? [...currentObject] : { ...currentObject }
               ) as never;
             }
 
-            lastObject[lastKey as never] = (
-              typeof value === 'function' ? value(lastObject[lastKey as never]) : value
-            ) as never;
+            lastObject[lastKey] = typeof value === 'function' ? value(lastObject[lastKey] as never) : value;
 
             atom.set(newObject);
           } else atom.do.setPartial({ [path]: value });
