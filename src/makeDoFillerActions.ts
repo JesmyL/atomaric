@@ -1,5 +1,6 @@
 import { Atom } from 'class';
 import { AtomOptions, AtomStoreKey, DefaultActions } from '../types';
+import { configuredOptions } from './lib';
 
 export const makeDoFillerActions = <Value, Actions extends Record<string, Function>>(
   initialValue: Value,
@@ -103,7 +104,7 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
           updater(newSet);
           atom.set(newSet);
         },
-        setDeepPartial: (path: string, value, separator = '.' as never) => {
+        setDeepPartial: (path: string, value, separator = (configuredOptions.keyPathSeparator ?? '.') as never) => {
           if (path.includes(separator)) {
             let parts = path.split(separator);
             const lastKey = parts[parts.length - 1];

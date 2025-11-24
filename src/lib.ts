@@ -15,8 +15,12 @@ let useSyncExtStore = (() => {
   throw 'call configureAtomaric() before all!';
 }) as typeof useSyncExternalStore;
 
-export const configureAtomaric: typeof configureAtomaricType = options =>
-  (useSyncExtStore = options.useSyncExternalStore);
+export const configuredOptions: Partial<Parameters<typeof configureAtomaricType>[0]> = {};
+
+export const configureAtomaric: typeof configureAtomaricType = options => {
+  configuredOptions.useSyncExternalStore = useSyncExtStore = options.useSyncExternalStore;
+  configuredOptions.keyPathSeparator = options.keyPathSeparator;
+};
 
 export const useAtomValue: typeof useAtomValueType = atom => {
   return useSyncExtStore(atom.subscribe, atom.get);
