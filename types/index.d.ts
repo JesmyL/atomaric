@@ -89,7 +89,7 @@ export type BooleanActions = {
   toggle: () => void;
 };
 
-export type SetActions<Value> = UpdateAction<Value> & {
+export type SetActions<Value> = {
   /** like the Set.prototype.add() method */
   add: (value: Value) => void;
   /** like the Set.prototype.delete() method */

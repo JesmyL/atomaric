@@ -1,6 +1,7 @@
 import { Atom } from 'class';
 import { AtomOptions, AtomStoreKey, DefaultActions } from '../types';
 import { configuredOptions } from './lib';
+import { makeDeepProxyObject } from './makeDeepProxyObject';
 
 type nil = null | undefined;
 
@@ -42,9 +43,10 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
           atom.set(values.concat(atom.get()));
         },
         update: updater => {
-          const newArray = atom.get().slice();
-          updater(newArray);
-          atom.set(newArray);
+          const prev = atom.get();
+          const newValue = updateValue(prev, updater);
+          if (newValue === prev) return;
+          atom.set(newValue);
         },
         filter: filter => {
           atom.set(atom.get().filter(filter ?? itIt));
@@ -84,11 +86,6 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
         clear: () => {
           atom.set(new Set());
         },
-        update: updater => {
-          const newSet = new Set(atom.get());
-          updater(newSet);
-          atom.set(newSet);
-        },
       }),
       initialValue,
     );
@@ -102,9 +99,10 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
             ...(typeof value === 'function' ? value(atom.get()) : value),
           })),
         update: updater => {
-          const newSet = { ...atom.get() };
-          updater(newSet);
-          atom.set(newSet);
+          const prev = atom.get();
+          const newValue = updateValue(prev, updater);
+          if (newValue === prev) return;
+          atom.set(newValue);
         },
         setDeepPartial: (
           path: string,
@@ -178,3 +176,33 @@ const fillActions = <Value, ValAtom extends Atom<Value> = Atom<Value>>(
   actions: (atom: ValAtom) => DefaultActions<Value>,
   _value: Value,
 ) => actions(atom);
+
+const updateValue = <Object extends object | unknown[]>(object: Object, updater: (object: Object) => void): Object => {
+  const newObject = Array.isArray(object) ? object.slice(0) : { ...object };
+  let isSomeSetted = false;
+
+  const pro = makeDeepProxyObject(object, {
+    onSet: (_, keys, setKey, value, prevValue) => {
+      if (value === prevValue) return true;
+      let currentObject = newObject as Record<string, unknown> | unknown[];
+
+      isSomeSetted = true;
+
+      for (const key of keys) {
+        const nextObject = currentObject[key as never] as object;
+
+        currentObject = currentObject[key as never] = (
+          Array.isArray(nextObject) ? nextObject.slice(0) : { ...nextObject }
+        ) as never;
+      }
+
+      currentObject[setKey as never] = value as never;
+
+      return true;
+    },
+  });
+
+  updater(pro);
+
+  return isSomeSetted ? (newObject as never) : object;
+};

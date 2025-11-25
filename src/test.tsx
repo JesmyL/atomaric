@@ -89,6 +89,40 @@ atom(0, { storeKey: 'a:a', warnOnDuplicateStoreKey: false });
   console.info(deepTest.get());
 })();
 
+(function testUpdate() {
+  const a: {
+    val: {
+      b: { c: { f: { g: { e: string } }[] }[] };
+    };
+    f: { l: { v: { r: number } }; g?: number };
+    num: number;
+  } = {
+    val: { b: { c: [{ f: [{ g: { e: '1' } }] }] } },
+    f: { l: { v: { r: 8 } } },
+    num: 8,
+  };
+
+  const updateTest = atom(a);
+
+  const prevF = a.val.b.c[0].f;
+  const prevV = a.f.l.v;
+
+  console.info(updateTest.get() === a);
+
+  updateTest.do.update(a => {
+    a.val.b.c[0].f[0].g.e = '2';
+    // a.num = 0;
+  });
+  console.info(
+    updateTest.get() === a,
+    prevF === a.val.b.c[0].f,
+    prevV === updateTest.get().f.l.v,
+    updateTest.get().val.b.c[0].f === a.val.b.c[0].f,
+    a.val.b.c[0].f[0].g,
+    updateTest.get().val.b.c[0].f[0].g,
+  );
+})();
+
 function App() {
   const test = useAtomValue(testAtom);
   const testText = useAtomValue(testTextAtom);
