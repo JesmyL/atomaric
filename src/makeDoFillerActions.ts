@@ -51,6 +51,17 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
         filter: filter => {
           atom.set(atom.get().filter(filter ?? itIt));
         },
+        add: value => {
+          if (atom.get().includes(value)) return;
+          atom.set(atom.get().concat([value]));
+        },
+        remove: value => {
+          const index = atom.get().indexOf(value);
+          if (index < 0) return;
+          const newArray = atom.get().slice(0);
+          newArray.splice(index, 1);
+          atom.set(newArray);
+        },
         toggle: (value, isAddInStart) => {
           const newArray = atom.get().slice();
           const index = newArray.indexOf(value);

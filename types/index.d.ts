@@ -109,6 +109,10 @@ export type ArrayActions<Value> = UpdateAction<Value[]> & {
   filter: (filter?: (value: Value, index: number, array: Value[]) => any) => void;
   /** will add value if it doesn't exist, otherwise delete */
   toggle: (value: Value, isAddInStart?: boolean) => void;
+  /** will add value if not exists */
+  add: (value: Value) => void;
+  /** will delete value from array */
+  remove: (value: Value) => void;
 };
 
 export type DefaultActions<Value> = Value extends Set<infer Val>
