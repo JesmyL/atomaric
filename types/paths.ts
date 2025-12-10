@@ -85,9 +85,9 @@ export type PathValueDonor<
         ? Required<Record<Key, PathValueDonor<Value[Key], Sep, KeyRest>>>
         : never
       : Value extends ReadonlyArray<infer V>
-      ? [PathValueDonor<V, Sep, KeyRest & Path<V, Sep>> | V]
+      ? [PathValueDonor<V, Sep, KeyRest & Path<V, Sep>>]
       : Value extends Partial<Record<infer K, infer V>> | Record<infer K, infer V>
-      ? Record<K, PathValueDonor<V, Sep, KeyRest & Path<V, Sep>>> | Value
+      ? Record<K, PathValueDonor<V, Sep, KeyRest & Path<V, Sep>>>
       : never
     : FullPath extends keyof Value
     ? FullPath extends `${string}${Sep}${string}${string}`
@@ -100,7 +100,7 @@ export type PathValueDonor<
       ? [V]
       : []
     : Value extends Partial<Record<infer K, infer V>> | Record<infer K, infer V>
-    ? Record<K, V> | Value
+    ? Record<K, V>
     : never
   : never;
 

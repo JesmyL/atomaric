@@ -74,14 +74,17 @@ atom(0, { storeKey: 'a:a', warnOnDuplicateStoreKey: false });
   }
 
   const deepTest = atom(
-    {} as Partial<Record<Id, { in: { inin: [{ ininin: number }] }[]; out: { some: { req: 0 } }; else: { if: {} } }>>,
+    {} as Record<
+      Id,
+      {
+        in: { inin: [{ ininin: number }] }[];
+        out: { some: { req: 0 } };
+        else: { if: {} };
+      }
+    >,
   );
 
-  deepTest.do.setDeepPartial(
-    `${Id.def}.in.${9}.inin.0`,
-    { ininin: 9 },
-    { [Id.def]: { in: [{ inin: [] }], else: { if: {} }, out: { some: { req: 0 } } } },
-  );
+  deepTest.do.setDeepPartial(`${Id.def}.in.${9}.inin.0`, { ininin: 9 }, { [Id.def]: { in: [{ inin: [] }] } });
   console.info('Id.def', deepTest.get());
 
   deepTest.do.setDeepPartial(`${Id.def}+in+4+inin+0+ininin`, () => 7, { [Id.def]: { in: [{ inin: [{}] }] } }, '+');
