@@ -87,7 +87,7 @@ atom(0, { storeKey: 'a:a', warnOnDuplicateStoreKey: false });
   deepTest.do.setDeepPartial(`${Id.def}.in.${9}.inin.0`, { ininin: 9 }, { [Id.def]: { in: [{ inin: [] }] } });
   console.info('Id.def', deepTest.get());
 
-  deepTest.do.setDeepPartial(`${Id.def}+in+4+inin+0+ininin`, () => 7, { [Id.def]: { in: [{ inin: [{}] }] } }, '+');
+  deepTest.do.setDeepPartial(`${Id.def}+in+ 4 +inin+0+ininin`, () => 7, { [Id.def]: { in: [{ inin: [{}] }] } }, '+');
   console.info('Id.def', deepTest.get());
 
   // will throw

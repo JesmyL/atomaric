@@ -121,41 +121,42 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
           if (!separator) return;
 
           if (path.includes(separator)) {
-            let parts = path.split(separator);
-            const lastKey = parts[parts.length - 1];
-            parts = parts.slice(0, -1);
+            let keys = path.split(separator);
+            const lastKey = keys[keys.length - 1];
+            keys = keys.slice(0, -1);
             const newObject = { ...atom.get() };
             let lastObject: Record<string, unknown> = newObject;
             let lastDonorObject = donor as Record<string, unknown> | nil;
 
-            for (const part of parts) {
-              let currentObject = lastObject[part];
-              const currentDonorObject = (lastDonorObject = lastDonorObject?.[
-                Array.isArray(lastDonorObject) ? '0' : part
-              ] as never);
-
-              if (currentObject == null) {
-                currentObject = Array.isArray(currentDonorObject) ? [] : {};
-              }
+            for (const key of keys) {
+              lastDonorObject = lastDonorObject?.[Array.isArray(lastDonorObject) ? '0' : key] as never;
+              const currentObject = lastObject[makeKey(lastObject, key)] ?? (Array.isArray(lastDonorObject) ? [] : {});
 
               if (currentObject == null || typeof currentObject !== 'object') {
                 if (donor == null) throw 'Incorrect path for setDeepPartial';
 
-                atom.do.setPartial({
-                  [path]: typeof value === 'function' ? value(undefined) : value,
-                });
+                const newValue = typeof value === 'function' ? value(undefined) : value;
+
+                if (atom.get()[path as never] !== newValue) atom.do.setPartial({ [path]: newValue });
                 return;
               }
 
-              lastObject = lastObject[part] = (
+              lastObject = lastObject[makeKey(lastObject, key)] = (
                 Array.isArray(currentObject) ? [...currentObject] : { ...currentObject }
               ) as never;
             }
 
+            const prev = lastObject[lastKey];
             lastObject[lastKey] = typeof value === 'function' ? value(lastObject[lastKey]) : value;
 
-            atom.set(newObject);
-          } else atom.do.setPartial({ [path]: value });
+            if (prev !== lastObject[lastKey]) atom.set(newObject);
+
+            return;
+          }
+
+          const prevValue = atom.get()[path as never];
+          const newValue = typeof value === 'function' ? value(prevValue) : value;
+          if (newValue !== prevValue) atom.do.setPartial({ [path]: newValue });
         },
       }),
       initialValue,
@@ -220,3 +221,5 @@ const updateValue = <Object extends object | unknown[]>(object: Object, updater:
 
   return isSomeSetted ? (newObject as never) : object;
 };
+
+const makeKey = (obj: object, key: string) => (Array.isArray(obj) ? `${+key}` : key);
