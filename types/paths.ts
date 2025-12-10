@@ -17,7 +17,7 @@ type PathInternal<T, Sep extends string, TraversedTypes = T> = T extends Readonl
       }[TupleKeys<T>]
     : PathImpl<ArrayKey, Sep, V, TraversedTypes>
   : {
-      [K in keyof T]-?: PathImpl<K & string, Sep, T[K], TraversedTypes>;
+      [K in keyof T]-?: PathImpl<K & (string | number), Sep, T[K], TraversedTypes>;
     }[keyof T];
 
 type TupleKeys<T extends ReadonlyArray<any>> = Exclude<keyof T, keyof any[]>;
@@ -50,17 +50,13 @@ type TPathValue<T, Sep extends string, P extends Path<T, Sep> | ArrayPath<T, Sep
       ? R extends Path<T[K], Sep>
         ? TPathValue<T[K], Sep, R>
         : never
-      : K extends `${ArrayKey}`
-      ? T extends ReadonlyArray<infer V>
-        ? TPathValue<V, Sep, R & Path<V, Sep>>
-        : never
+      : T extends ReadonlyArray<infer V> | Partial<Record<number, infer V>> | Record<number, infer V>
+      ? TPathValue<V, Sep, R & Path<V, Sep>>
       : never
     : P extends keyof T
     ? T[P]
-    : P extends `${ArrayKey}`
-    ? T extends ReadonlyArray<infer V>
-      ? V
-      : never
+    : T extends ReadonlyArray<infer V> | Partial<Record<number, infer V>> | Record<number, infer V>
+    ? V
     : never
   : never;
 
@@ -88,21 +84,23 @@ export type PathValueDonor<
       ? KeyRest extends Path<Value[Key], Sep>
         ? Required<Record<Key, PathValueDonor<Value[Key], Sep, KeyRest>>>
         : never
-      : Key extends `${ArrayKey}`
-      ? Value extends ReadonlyArray<infer V>
-        ? [PathValueDonor<V, Sep, KeyRest & Path<V, Sep>>]
-        : never
+      : Value extends ReadonlyArray<infer V>
+      ? [PathValueDonor<V, Sep, KeyRest & Path<V, Sep>> | V]
+      : Value extends Partial<Record<infer K, infer V>> | Record<infer K, infer V>
+      ? Record<K, PathValueDonor<V, Sep, KeyRest & Path<V, Sep>>> | Value
       : never
     : FullPath extends keyof Value
     ? FullPath extends `${string}${Sep}${string}${string}`
       ? Required<Record<FullPath, Value[FullPath]>>
-      : Partial<Record<string, unknown>>
-    : FullPath extends `${ArrayKey}`
-    ? Value extends ReadonlyArray<infer V>
-      ? FullPath extends `${string}${Sep}${string}${string}`
-        ? [V]
-        : []
-      : never
+      : Value extends ReadonlyArray<any>
+      ? []
+      : Record<string, never>
+    : Value extends ReadonlyArray<infer V>
+    ? FullPath extends `${string}${Sep}${string}${string}`
+      ? [V]
+      : []
+    : Value extends Partial<Record<infer K, infer V>> | Record<infer K, infer V>
+    ? Record<K, V> | Value
     : never
   : never;
 

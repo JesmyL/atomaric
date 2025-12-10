@@ -25,9 +25,14 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
 
   constructor(initialValue: Value, storeKeyOrOptions: AtomStoreKey | AtomOptions<Value, Actions> | undefined) {
     const updateCurrentValue = (value: Value) => (______current_value_____ = value);
-    const getCurrentValue = () => ______current_value_____;
+    const getCurrentValue = () => (updatedValue === defaultUpdatedValue ? ______current_value_____ : updatedValue);
     const subscribers = new Set<Subscriber<Value>>();
     const invokeSubscriber = (sub: Subscriber<Value>) => sub(get());
+
+    const defaultUpdatedValue = { 'oups... sorry': 'write us for fix this' } as Value;
+    let updatedValue = defaultUpdatedValue;
+    let updatePromise: Promise<unknown> | null = null;
+    let lastIsPreventSave = false as boolean | nil;
 
     let ______current_value_____ = initialValue;
     let debounceTimeout: ReturnType<typeof setTimeout> | number | undefined;
@@ -46,18 +51,34 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
       set: retFalse,
     });
 
-    const set: typeof this.set = (value, isPreventSave) => {
-      const val = typeof value === 'function' ? (value as (value: Value) => Value)(get()) : value;
-      if (val === get() || val === undefined || (typeof val === 'number' && isNaN(val))) return;
+    const promiseResolver = () => {
+      const value = updatedValue;
+      const isPreventSave = lastIsPreventSave;
 
-      updateCurrentValue(val);
+      updatePromise = null;
+      lastIsPreventSave = false;
+      updatedValue = defaultUpdatedValue;
+
+      if (value === get() || value === undefined || (typeof value === 'number' && isNaN(value))) {
+        return;
+      }
+
+      updateCurrentValue(value);
       subscribers.forEach(invokeSubscriber, this);
 
       try {
         updateHere.postMessage({ key, value: getCurrentValue() });
       } catch (e) {}
 
-      if (isPreventSave !== true) save(val);
+      if (isPreventSave !== true) save(value);
+    };
+
+    const set: typeof this.set = (value, isPreventSave) => {
+      updatedValue = typeof value === 'function' ? (value as (value: Value) => Value)(get()) : value;
+
+      lastIsPreventSave = isPreventSave;
+
+      updatePromise ??= Promise.resolve().then(promiseResolver);
     };
 
     this.set = (value, isPreventSave) => set(value, isPreventSave);

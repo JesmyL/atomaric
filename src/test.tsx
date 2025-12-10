@@ -68,6 +68,29 @@ atom(0, { storeKey: 'a:a', warnOnDuplicateStoreKey: false });
   console.info(deepTest.get(), deepTest.get().a.f === a.f, deepTest.get().b.c === b.c);
 })();
 
+(function testDeepPartialChanges() {
+  const enum Id {
+    def = 0,
+  }
+
+  const deepTest = atom(
+    {} as Partial<Record<Id, { in: { inin: [{ ininin: number }] }[]; out: { some: { req: 0 } }; else: { if: {} } }>>,
+  );
+
+  deepTest.do.setDeepPartial(
+    `${Id.def}.in.${9}.inin.0`,
+    { ininin: 9 },
+    { [Id.def]: { in: [{ inin: [] }], else: { if: {} }, out: { some: { req: 0 } } } },
+  );
+  console.info('Id.def', deepTest.get());
+
+  deepTest.do.setDeepPartial(`${Id.def}+in+4+inin+0+ininin`, () => 7, { [Id.def]: { in: [{ inin: [{}] }] } }, '+');
+  console.info('Id.def', deepTest.get());
+
+  // will throw
+  // console.error(deepTest.get()[Id.def]?.out.some.req);
+})();
+
 (function testDeepPartialSetWithDonor() {
   const a: {
     val: {
@@ -123,10 +146,13 @@ atom(0, { storeKey: 'a:a', warnOnDuplicateStoreKey: false });
   );
 })();
 
+const numAtom = atom(0);
+
 function App() {
   const test = useAtomValue(testAtom);
   const testText = useAtomValue(testTextAtom);
   const testDo = useAtomDo(testAtom);
+  console.log({ num: useAtomValue(numAtom) });
 
   console.info(test);
 
@@ -135,6 +161,25 @@ function App() {
       testDo.add(Date.now());
       testDo.update12();
       testTextAtom.do.addText('1');
+
+      numAtom.set(num => {
+        console.log(num);
+        return 1;
+      });
+      numAtom.set(3);
+      numAtom.set(num => {
+        console.log(num);
+        return 4;
+      });
+      numAtom.set(num => {
+        console.log(num);
+        return 5;
+      });
+      numAtom.set(6);
+      numAtom.set(num => {
+        console.log(num);
+        return 7;
+      });
     };
 
     window.addEventListener('click', onClick);

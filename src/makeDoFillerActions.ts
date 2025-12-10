@@ -101,6 +101,8 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
       initialValue,
     );
   } else if (initialValue instanceof Object) {
+    const keyPathSeparator = configuredOptions.keyPathSeparator || '.';
+
     defaultActions = fillActions<object>(
       atom as never,
       atom => ({
@@ -115,19 +117,16 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
           if (newValue === prev) return;
           atom.set(newValue);
         },
-        setDeepPartial: (
-          path: string,
-          value,
-          donor,
-          separator = (configuredOptions.keyPathSeparator ?? '.') as never,
-        ) => {
+        setDeepPartial: (path: string, value: any, donor, separator = keyPathSeparator as never) => {
+          if (!separator) return;
+
           if (path.includes(separator)) {
             let parts = path.split(separator);
             const lastKey = parts[parts.length - 1];
             parts = parts.slice(0, -1);
             const newObject = { ...atom.get() };
             let lastObject: Record<string, unknown> = newObject;
-            let lastDonorObject: Record<string, unknown> | nil = donor;
+            let lastDonorObject = donor as Record<string, unknown> | nil;
 
             for (const part of parts) {
               let currentObject = lastObject[part];
@@ -140,7 +139,11 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
               }
 
               if (currentObject == null || typeof currentObject !== 'object') {
-                atom.do.setPartial({ [path]: typeof value === 'function' ? value(undefined!) : value });
+                if (donor == null) throw 'Incorrect path for setDeepPartial';
+
+                atom.do.setPartial({
+                  [path]: typeof value === 'function' ? value(undefined) : value,
+                });
                 return;
               }
 
@@ -149,7 +152,7 @@ export const makeDoFillerActions = <Value, Actions extends Record<string, Functi
               ) as never;
             }
 
-            lastObject[lastKey] = typeof value === 'function' ? value(lastObject[lastKey] as never) : value;
+            lastObject[lastKey] = typeof value === 'function' ? value(lastObject[lastKey]) : value;
 
             atom.set(newObject);
           } else atom.do.setPartial({ [path]: value });
