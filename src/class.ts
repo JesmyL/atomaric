@@ -154,13 +154,15 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
         ? (value: Value) => JSON.stringify([zipValue(value)])
         : (value: Value) => {
             tools ??= {};
-            tools.exp = exp(proxiedSelf, key in localStorage).getTime() + 0.2866;
+            tools.exp = exp(proxiedSelf, key in localStorage).getTime();
 
             if (tools.exp - Date.now() < 24 * 60 * 60 * 1000) {
               clearTimeout(expTimeout);
               clearTimeout(initResetTimeouts[key]);
               expTimeout = setTimeout(() => this.reset(), tools.exp - Date.now());
             }
+
+            tools.exp = Math.trunc(tools.exp / 1000);
 
             return JSON.stringify([zipValue(value), tools]);
           };
@@ -275,7 +277,7 @@ localStorage.removeItem = key => {
   if (unchangableAtoms[key] !== undefined) return;
   removeItem.call(localStorage, key);
 };
-const expMatcherReg = /"exp":(\d+)\.2866/;
+const expMatcherReg = /"exp":\s*(\d+)/;
 const prefix = `atom\\`;
 const registeredAtoms: Record<string, Atom<any>> = {};
 const initResetTimeouts: Record<string, ReturnType<typeof setTimeout>> = {};
@@ -283,13 +285,18 @@ const initResetTimeouts: Record<string, ReturnType<typeof setTimeout>> = {};
 setTimeout(() => {
   Object.keys(localStorage).forEach(key => {
     if (!key.startsWith(prefix) || typeof localStorage[key] !== 'string') return;
-    const ts = +localStorage[key].match(expMatcherReg)?.[1]!;
+    const secTs = +localStorage[key].match(expMatcherReg)?.[1]!;
 
-    if (ts && ts - Date.now() < 24 * 60 * 60 * 1000) {
-      initResetTimeouts[key] = setTimeout(() => {
-        if (registeredAtoms[key]) registeredAtoms[key].reset();
-        else delete localStorage[key];
-      }, ts - Date.now());
-    }
+    if (!secTs || secTs * 1000 - Date.now() > 24 * 60 * 60 * 1000) return;
+
+    const jsonValue = JSON.parse(localStorage[key]);
+
+    if (!Array.isArray(jsonValue) || jsonValue[1] == null || !('exp' in jsonValue[1]) || jsonValue[1].exp !== secTs)
+      return;
+
+    initResetTimeouts[key] = setTimeout(() => {
+      if (registeredAtoms[key]) registeredAtoms[key].reset();
+      else delete localStorage[key];
+    }, secTs * 1000 - Date.now());
   });
 }, 1000);
