@@ -1,5 +1,9 @@
 import { exec } from 'child_process';
 
+const otpi = process.argv.indexOf('--otp') + 1;
+
+if (!otpi || !+process.argv[otpi]) throw 'pass --otp <code>';
+
 export const deployTheCode = async () => {
   await execAsync('npm run build');
 
@@ -7,7 +11,7 @@ export const deployTheCode = async () => {
   // await execAsync('npm version minor');
   await execAsync('npm version patch');
 
-  await execAsync('npm publish');
+  await execAsync(`npm publish --otp=${process.argv[otpi]}`);
 };
 
 const execAsync = stringCommand => {
