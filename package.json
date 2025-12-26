@@ -1,7 +1,7 @@
 {
   "name": "atomaric",
   "description": "Manage your project state",
-  "version": "0.0.54",
+  "version": "0.0.55",
   "type": "module",
   "main": "./build/atomaric.umd.cjs",
   "module": "./build/atomaric.js",
