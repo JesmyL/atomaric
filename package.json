@@ -3,14 +3,15 @@
   "description": "Manage your project state",
   "version": "0.0.56",
   "type": "module",
+  "source": "./src/index.ts",
   "main": "./build/atomaric.umd.cjs",
   "module": "./build/atomaric.js",
   "types": "./types/index.d.ts",
   "exports": {
     ".": {
+      "import": "./src/index.ts",
       "types": "./types/index.d.ts",
-      "require": "./build/atomaric.umd.cjs",
-      "import": "./build/atomaric.js"
+      "require": "./build/atomaric.umd.cjs"
     }
   },
   "files": [
