@@ -16,7 +16,8 @@
   },
   "files": [
     "build",
-    "types"
+    "types",
+    "src"
   ],
   "keywords": [
     "react",
