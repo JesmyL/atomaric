@@ -151,10 +151,13 @@ atom(0, { storeKey: 'a:a', warnOnDuplicateStoreKey: false });
 
 const numAtom = atom(0);
 
+const inputValueAtom = atom('');
+
 function App() {
   const test = useAtomValue(testAtom);
   const testText = useAtomValue(testTextAtom);
   const testDo = useAtomDo(testAtom);
+  const value = useAtomValue(inputValueAtom);
   console.log({ num: useAtomValue(numAtom) });
 
   console.info(test);
@@ -189,5 +192,16 @@ function App() {
     return () => window.removeEventListener('click', onClick);
   }, []);
 
-  return <>{testText}</>;
+  return (
+    <>
+      {testText}
+      <input
+        value={value}
+        onChange={event => {
+          inputValueAtom.set(event.currentTarget.value + '*');
+          inputValueAtom.set(event.currentTarget.value);
+        }}
+      />
+    </>
+  );
 }

@@ -25,13 +25,11 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
 
   constructor(initialValue: Value, storeKeyOrOptions: AtomStoreKey | AtomOptions<Value, Actions> | undefined) {
     const updateCurrentValue = (value: Value) => (______current_value_____ = value);
-    const getCurrentValue = () => (updatedValue === defaultUpdatedValue ? ______current_value_____ : updatedValue);
+    const getCurrentValue = () => ______current_value_____;
     const subscribers = new Set<Subscriber<Value>>();
     const invokeSubscriber = (sub: Subscriber<Value>) => sub(get());
 
-    const defaultUpdatedValue = { 'oups... sorry': 'write us for fix this' } as Value;
-    let updatedValue = defaultUpdatedValue;
-    let updatePromise: Promise<unknown> | null = null;
+    let isQueueWait = true;
     let lastIsPreventSave = false as boolean | nil;
 
     let ______current_value_____ = initialValue;
@@ -52,33 +50,29 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
     });
 
     const promiseResolver = () => {
-      const value = updatedValue;
-      const isPreventSave = lastIsPreventSave;
-
-      updatePromise = null;
+      isQueueWait = true;
+      if (lastIsPreventSave !== true) save(get());
       lastIsPreventSave = false;
-      updatedValue = defaultUpdatedValue;
-
-      if (value === get() || value === undefined || (typeof value === 'number' && isNaN(value))) {
-        return;
-      }
-
-      updateCurrentValue(value);
-      subscribers.forEach(invokeSubscriber, this);
 
       try {
         updateHere.postMessage({ key, value: getCurrentValue() });
       } catch (e) {}
-
-      if (isPreventSave !== true) save(value);
     };
 
     const set: typeof this.set = (value, isPreventSave) => {
-      updatedValue = typeof value === 'function' ? (value as (value: Value) => Value)(get()) : value;
+      const nextValue = typeof value === 'function' ? (value as (value: Value) => Value)(get()) : value;
 
+      if (nextValue === get()) return;
+
+      updateCurrentValue(nextValue);
       lastIsPreventSave = isPreventSave;
 
-      updatePromise ??= Promise.resolve().then(promiseResolver);
+      if (isQueueWait) {
+        isQueueWait = false;
+        subscribers.forEach(invokeSubscriber);
+
+        queueMicrotask(promiseResolver);
+      }
     };
 
     this.set = (value, isPreventSave) => set(value, isPreventSave);
@@ -95,7 +89,6 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
 
     this.reset = () => {
       set(initialValue, true);
-      subscribers.forEach(invokeSubscriber, this);
     };
 
     const deferredTimeOut = (value: Value, isPreventSave: boolean) => {
