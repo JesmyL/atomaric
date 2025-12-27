@@ -1,5 +1,5 @@
-import { Atom } from 'class';
 import { AtomOptions, AtomStoreKey, DefaultActions } from '../types';
+import { Atom } from './class';
 import { configuredOptions } from './lib';
 import { makeDeepProxyObject } from './makeDeepProxyObject';
 

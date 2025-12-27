@@ -3,6 +3,12 @@ import { Path, PathValue, PathValueDonor } from './paths';
 
 export interface Register {}
 
+export type ObjectActionsSetDeepPartial = Register extends {
+  keyPathSeparator: infer Separator extends string;
+}
+  ? Separator
+  : '.';
+
 type Sunscriber<Value> = (value: Value) => void;
 
 export type AtomStoreKey = `${string}${string}:${string}${string}`;
@@ -77,12 +83,6 @@ export type ObjectActions<Value> = UpdateAction<Value> & {
     separator?: Sep,
   ) => void;
 };
-
-export type ObjectActionsSetDeepPartial = Register extends {
-  keyPathSeparator: infer Separator extends string;
-}
-  ? Separator
-  : '.';
 
 export type BooleanActions = {
   /** toggle current value between true/false */
