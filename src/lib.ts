@@ -20,6 +20,8 @@ export const configuredOptions: Partial<Parameters<typeof configureAtomaricType>
 export const configureAtomaric: typeof configureAtomaricType = options => {
   configuredOptions.useSyncExternalStore = useSyncExtStore = options.useSyncExternalStore;
   configuredOptions.keyPathSeparator = options.keyPathSeparator;
+  configuredOptions.securifyKeyLevel = options.securifyKeyLevel;
+  configuredOptions.securifyValueLevel = options.securifyValueLevel;
 };
 
 export const useAtomValue: typeof useAtomValueType = atom => {

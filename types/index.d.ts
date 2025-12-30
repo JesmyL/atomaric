@@ -34,14 +34,16 @@ export type AtomOptions<Value, Actions extends Record<string, Function> = {}> = 
   | {
       /** save in localStorage by this key */
       storeKey: AtomStoreKey;
+      securifyKeyLevel?: AtomSecureLevel;
+      securifyValueLevel?: AtomSecureLevel;
     }
   | {
       /** declare your custom actions */
       do: (
-        set: (value: Value | ((value: Value) => Value), isPreventSave?: boolean) => void,
+        set: AtomSetMethod<Value>,
         get: () => Value,
         self: Atom<Value>,
-        setDeferred: (value: Value | ((value: Value) => Value), debounceMs?: number, isPreventSave?: boolean) => void,
+        setDeferred: AtomSetDeferredMethod<Value>,
       ) => Actions;
     }
 );
@@ -175,4 +177,6 @@ export function atom<Value, Actions extends Record<string, Function> = {}>(
 export function configureAtomaric(options: {
   useSyncExternalStore: typeof useSyncExternalStore;
   keyPathSeparator: ObjectActionsSetDeepPartial;
+  securifyKeyLevel?: AtomSecureLevel;
+  securifyValueLevel?: AtomSecureLevel;
 }): void;

@@ -1,8 +1,13 @@
 import React, { useEffect, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
+import { AtomSecureLevel } from './class';
 import { atom, configureAtomaric, useAtomDo, useAtomValue } from './lib';
 
-configureAtomaric({ useSyncExternalStore, keyPathSeparator: '.' });
+configureAtomaric({
+  useSyncExternalStore,
+  keyPathSeparator: '.',
+  securifyValueLevel: AtomSecureLevel.Middle,
+});
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -15,6 +20,8 @@ const testAtom = atom(new Set<number>(), {
   do: set => ({
     update12: () => set(prev => new Set(prev).add(12)),
   }),
+  exp: () => new Date(Date.now() + 30 * 1000),
+  securifyValueLevel: AtomSecureLevel.Strong,
 });
 
 const testTextAtom = atom('', {
@@ -148,6 +155,17 @@ atom(0, { storeKey: 'a:a', warnOnDuplicateStoreKey: false });
     updateTest.get().val.b.c[0].f[0].g,
   );
 })();
+
+const zxcAtom = atom(
+  { a: 1 },
+  {
+    storeKey: 'asd:zxc',
+    securifyKeyLevel: true,
+    securifyValueLevel: AtomSecureLevel.Strong,
+  },
+);
+
+zxcAtom.do.setPartial(prev => ({ a: prev.a + 1 }));
 
 const numAtom = atom(0);
 
