@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { AtomSecureLevel } from '../src/class';
 import { Path, PathValue, PathValueDonor } from './paths';
 
 export interface Register {}

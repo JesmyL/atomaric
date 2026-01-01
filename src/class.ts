@@ -154,7 +154,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
       exp = storeKeyOrOptions.exp ?? exp;
     } else return proxiedSelf;
 
-    const keyPostfix = securifyKeyLevel ? stringifySecure(storeKey, AtomSecureLevel.Strong) : storeKey;
+    const keyPostfix = securifyKeyLevel ? stringifySecure(storeKey, securifyKeyLevel) : storeKey;
     const key = `${securifyValueLevel ? sequrePrefix : prefix}${keyPostfix}`;
 
     if (securifyKeyLevel) {
@@ -164,40 +164,16 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
         delete localStorage_[unsequreKey];
       }
     } else {
-      const sequreKey = `${prefix}${stringifySecure(storeKey, AtomSecureLevel.Strong)}`;
+      const sequreKey = `${prefix}${stringifySecure(storeKey, securifyKeyLevel)}`;
       if (sequreKey in localStorage_) {
         localStorage_[key] = localStorage_[sequreKey];
         delete localStorage_[sequreKey];
       }
     }
 
-    if (securifyValueLevel) {
-      delete localStorage_[`${prefix}${keyPostfix}`];
-
-      const zip = zipValue;
-      const unzip = unzipValue;
-
-      unzipValue = value => {
-        try {
-          return unzip(parseSecure(value, securifyValueLevel)[0]);
-        } catch (e) {
-          delete localStorage_[key];
-          return '' as Value;
-        }
-      };
-      zipValue = value => {
-        try {
-          return stringifySecure([zip(value)], securifyValueLevel);
-        } catch (e) {
-          delete localStorage_[key];
-          return '';
-        }
-      };
-    } else delete localStorage_[`${sequrePrefix}${keyPostfix}`];
-
     const stringifyValue =
       exp === null || !(exp(proxiedSelf, key in localStorage_) instanceof Date)
-        ? (value: Value) => stringifySecure([zipValue(value)], AtomSecureLevel.None)
+        ? (value: Value) => stringifySecure([zipValue!(value)], AtomSecureLevel.None)
         : (value: Value) => {
             tools ??= {};
             tools.exp = exp(proxiedSelf, key in localStorage_).getTime();
@@ -210,8 +186,43 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
 
             tools.exp = Math.trunc(tools.exp / 1000);
 
-            return stringifySecure([zipValue(value), tools], AtomSecureLevel.None);
+            return stringifySecure([zipValue!(value), tools], AtomSecureLevel.None);
           };
+
+    if (securifyValueLevel) {
+      const unsecureKey = `${prefix}${keyPostfix}`;
+      const zip = zipValue;
+      const unzip = unzipValue;
+
+      zipValue = value => {
+        try {
+          return stringifySecure([zip(value)], securifyValueLevel);
+        } catch (e) {
+          delete localStorage_[key];
+          return '';
+        }
+      };
+
+      if (unsecureKey in localStorage_) {
+        const secureKey = `${prefix}${stringifySecure(storeKey, securifyKeyLevel)}`;
+
+        try {
+          localStorage_[secureKey] = stringifyValue(
+            unzipValue(parseSecure(localStorage_[unsecureKey], AtomSecureLevel.None)[0]),
+          );
+          delete localStorage_[unsecureKey];
+        } catch (e) {}
+      }
+
+      unzipValue = value => {
+        try {
+          return unzip(parseSecure(value, securifyValueLevel)[0]);
+        } catch (e) {
+          delete localStorage_[key];
+          return '' as Value;
+        }
+      };
+    } else delete localStorage_[`${sequrePrefix}${keyPostfix}`];
 
     const parseValue = (value: string): Value => {
       const val = parseSecure(value, AtomSecureLevel.None);
