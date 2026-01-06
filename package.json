@@ -1,7 +1,7 @@
 {
   "name": "atomaric",
   "description": "Manage your project state",
-  "version": "0.0.62",
+  "version": "0.0.70",
   "type": "module",
   "main": "./build/atomaric.umd.cjs",
   "module": "./build/atomaric.js",
@@ -15,7 +15,8 @@
   },
   "files": [
     "build",
-    "types"
+    "types",
+    "src/do.classes"
   ],
   "keywords": [
     "react",

@@ -1,5 +1,6 @@
 import {
   AtomOptions,
+  AtomSecureLevel,
   AtomSetDeferredMethod,
   AtomSetMethod,
   AtomStoreKey,
@@ -14,13 +15,6 @@ type Subscriber<Value> = (value: Value) => void;
 
 type Tools = { exp?: number };
 
-export const enum AtomSecureLevel {
-  None,
-  Simple,
-  Middle,
-  Strong,
-}
-
 export class Atom<Value, Actions extends Record<string, Function> = {}> implements AtomType<Value, Actions> {
   get;
   set: AtomSetMethod<Value>;
@@ -31,7 +25,12 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
   isInitialValue;
   do!: Actions & DefaultActions<Value>;
 
-  constructor(initialValue: Value, storeKeyOrOptions: AtomStoreKey | AtomOptions<Value, Actions> | undefined) {
+  constructor(
+    initialValue: Value | (() => Value),
+    storeKeyOrOptions: AtomStoreKey | AtomOptions<Value, Actions> | undefined,
+  ) {
+    initialValue = typeof initialValue === 'function' ? (initialValue as () => Value)() : initialValue;
+
     const updateCurrentValue = (value: Value) => (______current_value_____ = value);
     const getCurrentValue = () => ______current_value_____;
     const subscribers = new Set<Subscriber<Value>>();
@@ -121,17 +120,30 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
     let warnOnDuplicateStoreKey = true;
     let listenStorageChanges = true;
     let isUnchangable = false;
-    let securifyKeyLevel = AtomSecureLevel.None;
-    let securifyValueLevel = AtomSecureLevel.None;
+    let securifyKeyLevel: AtomSecureLevel = 0;
+    let securifyValueLevel: AtomSecureLevel = 0;
     let expTimeout = -1 as never as ReturnType<typeof setTimeout>;
 
     let unzipValue: AtomOptions<Value, Actions>['unzipValue'] =
-      initialValue instanceof Set ? strValue => new Set(strValue) : val => val;
+      initialValue instanceof Set || initialValue instanceof Map ? strValue => new Set(strValue) : val => val;
 
     let zipValue: AtomOptions<Value, Actions>['zipValue'] =
       initialValue instanceof Set
         ? val => {
             if (val instanceof Set) return Array.from(val);
+
+            console.error(val);
+            throw 'The value is not Set instance';
+          }
+        : initialValue instanceof Map
+        ? val => {
+            if (val instanceof Map) {
+              const arr: [unknown, unknown][] = [];
+
+              val.forEach((value, key) => arr.push([key, value]));
+
+              return arr;
+            }
 
             console.error(val);
             throw 'The value is not Set instance';
@@ -173,7 +185,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
 
     const stringifyValue =
       exp === null || !(exp(proxiedSelf, key in localStorage_) instanceof Date)
-        ? (value: Value) => stringifySecure([zipValue!(value)], AtomSecureLevel.None)
+        ? (value: Value) => stringifySecure([zipValue!(value)], 0)
         : (value: Value) => {
             tools ??= {};
             tools.exp = exp(proxiedSelf, key in localStorage_).getTime();
@@ -186,7 +198,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
 
             tools.exp = Math.trunc(tools.exp / 1000);
 
-            return stringifySecure([zipValue!(value), tools], AtomSecureLevel.None);
+            return stringifySecure([zipValue!(value), tools], 0);
           };
 
     if (securifyValueLevel) {
@@ -207,9 +219,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
         const secureKey = `${prefix}${stringifySecure(storeKey, securifyKeyLevel)}`;
 
         try {
-          localStorage_[secureKey] = stringifyValue(
-            unzipValue(parseSecure(localStorage_[unsecureKey], AtomSecureLevel.None)[0]),
-          );
+          localStorage_[secureKey] = stringifyValue(unzipValue(parseSecure(localStorage_[unsecureKey], 0)[0]));
           delete localStorage_[unsecureKey];
         } catch (e) {}
       }
@@ -225,7 +235,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
     } else delete localStorage_[`${sequrePrefix}${keyPostfix}`];
 
     const parseValue = (value: string): Value => {
-      const val = parseSecure(value, AtomSecureLevel.None);
+      const val = parseSecure(value, 0);
       tools = val[1];
 
       return unzipValue(val[0]);
@@ -356,46 +366,46 @@ for (let i = 54; i < 80; i++) {
 const switchLetterCase = (letter: string) => lettersCaseSwitcedDict[letter] ?? letter;
 
 const stringifySecure = (() => {
-  const stringifyDict: Record<AtomSecureLevel, (value: any) => string> = {
-    [AtomSecureLevel.None]: value => JSON.stringify(value),
-    [AtomSecureLevel.Simple]: value => btoa(encodeURI(stringifyDict[AtomSecureLevel.None](value))),
-    [AtomSecureLevel.Middle]: value => {
-      const newValue = stringifyDict[AtomSecureLevel.Simple](value);
+  const stringifyDict: Record<AtomSecureLevel, (value: any) => string> = [
+    value => JSON.stringify(value),
+    value => btoa(encodeURI(stringifyDict[0](value))),
+    value => {
+      const newValue = stringifyDict[1](value);
 
       return `${newValue.slice(0, unsecureLength)}${newValue
         .slice(unsecureLength)
         .replace(findLettersReg, switchLetterCase)}`;
     },
-    [AtomSecureLevel.Strong]: value => btoa(stringifyDict[AtomSecureLevel.Middle](value)),
-  };
+    value => btoa(stringifyDict[2](value)),
+  ];
 
   return (value: any, level: AtomSecureLevel) => {
     try {
       return stringifyDict[level](value);
     } catch (e) {
-      if (level === AtomSecureLevel.None) throw e;
-      return stringifyDict[AtomSecureLevel.None](value);
+      if (level === 0) throw e;
+      return stringifyDict[0](value);
     }
   };
 })();
 
 const parseSecure = (() => {
-  const parseDict: Record<AtomSecureLevel, (value: string) => any> = {
-    [AtomSecureLevel.None]: value => JSON.parse(value),
-    [AtomSecureLevel.Simple]: value => parseDict[AtomSecureLevel.None](decodeURI(atob(value))),
-    [AtomSecureLevel.Middle]: value =>
-      parseDict[AtomSecureLevel.Simple](
+  const parseDict: Record<AtomSecureLevel, (value: string) => any> = [
+    value => JSON.parse(value),
+    value => parseDict[0](decodeURI(atob(value))),
+    value =>
+      parseDict[1](
         `${value.slice(0, unsecureLength)}${value.slice(unsecureLength).replace(findLettersReg, switchLetterCase)}`,
       ),
-    [AtomSecureLevel.Strong]: value => parseDict[AtomSecureLevel.Middle](atob(value)),
-  };
+    value => parseDict[2](atob(value)),
+  ];
 
   return (value: string, level: AtomSecureLevel) => {
     try {
       return parseDict[level](value);
     } catch (e) {
-      if (level === AtomSecureLevel.None) throw e;
-      return parseDict[AtomSecureLevel.None](value);
+      if (level === 0) throw e;
+      return parseDict[0](value);
     }
   };
 })();
@@ -407,7 +417,7 @@ setTimeout(() => {
 
     if (!secTs || secTs * 1000 - Date.now() > 24 * 60 * 60 * 1000) return;
 
-    const jsonValue = parseSecure(localStorage_[key], AtomSecureLevel.None);
+    const jsonValue = parseSecure(localStorage_[key], 0);
 
     if (!Array.isArray(jsonValue) || jsonValue[1] == null || !('exp' in jsonValue[1]) || jsonValue[1].exp !== secTs)
       return;

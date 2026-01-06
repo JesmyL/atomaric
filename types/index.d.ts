@@ -1,10 +1,17 @@
 import { useSyncExternalStore } from 'react';
-import { AtomSecureLevel } from '../src/class';
+import { AtomArrayDoActions } from '../src/do.classes/Array';
+import { AtomBooleanDoActions } from '../src/do.classes/Boolean';
+import { AtomMapDoActions } from '../src/do.classes/Map';
+import { AtomNumberDoActions } from '../src/do.classes/Number';
+import { AtomObjectDoActions } from '../src/do.classes/Object';
+import { AtomSetDoActions } from '../src/do.classes/Set';
 import { Path, PathValue, PathValueDonor } from './paths';
+
+export type AtomSecureLevel = 0 | 1 | 2 | 3;
 
 export interface Register {}
 
-export type ObjectActionsSetDeepPartial = Register extends {
+export type ObjectActionsSetDeepPartialSeparator = Register extends {
   keyPathSeparator: infer Separator extends string;
 }
   ? Separator
@@ -59,79 +66,33 @@ export type AtomSetDeferredMethod<Value> = (
 
 export type AtomSubscribeMethod<Value> = (subscriber: Sunscriber<Value>) => () => void;
 
-export type UpdateAction<Value> = {
-  /** transform current taken value */
-  update: (updater: (value: Value) => void) => void;
-};
-
-export type NumberActions<Value> = {
-  /** pass the 2 to increment on 2, pass the -2 to decrement on 2
-   * **default: 1**
-   */
-  increment: (delta?: number) => void;
-};
-
-export type ObjectActions<Value> = UpdateAction<Value> & {
-  /** pass partial object to update some field values */
-  setPartial: (value: Partial<Value> | ((value: Value) => Partial<Value>)) => void;
-  /** pass partial value to update some deep values by flat path */
-  setDeepPartial: <
-    ValuePath extends Path<Value, Sep>,
-    Val extends PathValue<Value, Sep, ValuePath>,
-    Sep extends string = ObjectActionsSetDeepPartial,
-  >(
-    path: ValuePath,
-    value: Val | ((value: Val) => Val),
-    donor: PathValueDonor<Value, Sep, ValuePath> | null,
-    separator?: Sep,
-  ) => void;
-};
-
-export type BooleanActions = {
-  /** toggle current value between true/false */
-  toggle: () => void;
-};
-
-export type SetActions<Value> = {
-  /** like the Set.prototype.add() method */
-  add: (value: Value) => void;
-  /** like the Set.prototype.delete() method */
-  delete: (value: Value) => void;
-  /** will add value if it doesn't exist, otherwise delete */
-  toggle: (value: Value) => void;
-  /** like the Set.prototype.clear() method */
-  clear: () => void;
-};
-
-export type ArrayActions<Value> = UpdateAction<Value[]> & {
-  /** like the Array.prototype.push() method */
-  push: (...values: Value[]) => void;
-  /** like the Array.prototype.unshift() method */
-  unshift: (...values: Value[]) => void;
-  /** like the Array.prototype.filter() method, but callback is optional - (it) => !!it */
-  filter: (filter?: (value: Value, index: number, array: Value[]) => any) => void;
-  /** will add value if it doesn't exist, otherwise delete */
-  toggle: (value: Value, isAddInStart?: boolean) => void;
-  /** will add value if not exists */
-  add: (value: Value) => void;
-  /** will delete value from array */
-  remove: (value: Value) => void;
-};
+export type ObjectActionsSetDeepPartialDoAction<Value> = <
+  ValuePath extends Path<Value, Sep>,
+  Val extends PathValue<Value, Sep, ValuePath>,
+  Sep extends string = ObjectActionsSetDeepPartialSeparator,
+>(
+  path: ValuePath,
+  value: Val | ((value: Val) => Val),
+  donor: PathValueDonor<Value, Sep, ValuePath> | null,
+  separator?: Sep,
+) => void;
 
 export type DefaultActions<Value> = Value extends Set<infer Val>
-  ? SetActions<Val>
+  ? AtomSetDoActions<Val>
+  : Value extends Map<infer Key, infer Val>
+  ? AtomMapDoActions<Value, Key, Val>
   : Value extends boolean
-  ? BooleanActions
+  ? AtomBooleanDoActions
   : Value extends (infer Val)[]
-  ? ArrayActions<Val>
+  ? AtomArrayDoActions<Val>
   : Value extends number
-  ? NumberActions<Value>
+  ? AtomNumberDoActions
   : Value extends object
-  ? ObjectActions<Value>
+  ? AtomObjectDoActions<Value>
   : {};
 
 declare class Atom<Value, Actions extends Record<string, Function> = {}> {
-  constructor(initialValue: Value, storeKeyOrOptions: StoreKeyOrOptions<Value, Actions> | undefined);
+  constructor(initialValue: Value | (() => Value), storeKeyOrOptions: StoreKeyOrOptions<Value, Actions> | undefined);
 
   /** initial value */
   readonly initialValue: Value;
@@ -170,14 +131,14 @@ export type StoreKeyOrOptions<Value, Actions extends Record<string, Function> = 
   | AtomOptions<Value, Actions>;
 
 export function atom<Value, Actions extends Record<string, Function> = {}>(
-  value: Value,
+  value: Value | (() => Value),
   storeKeyOrOptions?: StoreKeyOrOptions<Value, Actions>,
 ): Atom<Value, Actions>;
 
 /** invoke this function before all atom usages */
 export function configureAtomaric(options: {
   useSyncExternalStore: typeof useSyncExternalStore;
-  keyPathSeparator: ObjectActionsSetDeepPartial;
+  keyPathSeparator: ObjectActionsSetDeepPartialSeparator;
   securifyKeyLevel?: AtomSecureLevel;
   securifyValueLevel?: AtomSecureLevel;
 }): void;

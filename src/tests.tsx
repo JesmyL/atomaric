@@ -1,6 +1,5 @@
 import React, { useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AtomSecureLevel } from './class';
 import { atom, configureAtomaric } from './lib';
 
 configureAtomaric({
@@ -16,8 +15,8 @@ createRoot(document.getElementById('root')!).render(
 
 const testAtom = atom('', {
   storeKey: '1:1',
-  securifyKeyLevel: AtomSecureLevel.Middle,
-  securifyValueLevel: AtomSecureLevel.Middle,
+  securifyKeyLevel: 2,
+  securifyValueLevel: 2,
 });
 
 testAtom.set('1:1');
