@@ -8,7 +8,7 @@ import { AtomNumberDoActions } from './do.classes/Number';
 import { AtomObjectDoActions } from './do.classes/Object';
 import { AtomSetDoActions } from './do.classes/Set';
 
-export const makeDoFillerActions = <Value, Actions extends Record<string, Function>>(
+export const makeDoFillerActions = <Value, Actions extends Record<string, AnyFunc>>(
   initialValue: Value,
   atom: Atom<Value, Actions>,
   storeKeyOrOptions: AtomStoreKey | AtomOptions<Value, Actions> | undefined,

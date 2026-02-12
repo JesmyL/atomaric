@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   AtomOptions,
   AtomSecureLevel,
@@ -15,7 +16,9 @@ type Subscriber<Value> = (value: Value) => void;
 
 type Tools = { exp?: number };
 
-export class Atom<Value, Actions extends Record<string, Function> = {}> implements AtomType<Value, Actions> {
+export class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string, AnyFunc>>
+  implements AtomType<Value, Actions>
+{
   get;
   set: AtomSetMethod<Value>;
   setDeferred: AtomSetDeferredMethod<Value>;
@@ -63,7 +66,9 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
 
       try {
         updateHere.postMessage({ key, value: getCurrentValue() });
-      } catch (e) {}
+      } catch (_e) {
+        //
+      }
     };
 
     const set: typeof this.set = (value, isPreventSave) => {
@@ -125,7 +130,11 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
     let expTimeout = -1 as never as ReturnType<typeof setTimeout>;
 
     let unzipValue: AtomOptions<Value, Actions>['unzipValue'] =
-      initialValue instanceof Set || initialValue instanceof Map ? strValue => new Set(strValue) : val => val;
+      initialValue instanceof Set
+        ? strValue => new Set(strValue)
+        : initialValue instanceof Map
+        ? strValue => new Map(strValue)
+        : val => val;
 
     let zipValue: AtomOptions<Value, Actions>['zipValue'] =
       initialValue instanceof Set
@@ -209,7 +218,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
       zipValue = value => {
         try {
           return stringifySecure([zip(value)], securifyValueLevel);
-        } catch (e) {
+        } catch (_e) {
           delete localStorage_[key];
           return '';
         }
@@ -221,13 +230,15 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
         try {
           localStorage_[secureKey] = stringifyValue(unzipValue(parseSecure(localStorage_[unsecureKey], 0)[0]));
           delete localStorage_[unsecureKey];
-        } catch (e) {}
+        } catch (_e) {
+          //
+        }
       }
 
       unzipValue = value => {
         try {
           return unzip(parseSecure(value, securifyValueLevel)[0]);
-        } catch (e) {
+        } catch (_e) {
           delete localStorage_[key];
           return '' as Value;
         }
@@ -256,7 +267,7 @@ export class Atom<Value, Actions extends Record<string, Function> = {}> implemen
         isInactualValue = false;
         try {
           updateCurrentValue(key in localStorage_ ? parseValue(localStorage_[key]) : initialValue);
-        } catch (e) {
+        } catch (_e) {
           console.warn('Invalid json value', localStorage_[key]);
         }
       }
@@ -319,7 +330,9 @@ try {
   updateHere.addEventListener('message', event => {
     unchangableAtoms[event.data.key]?.set(event.data.value, true);
   });
-} catch (e) {}
+} catch (_e) {
+  //
+}
 
 const localStorage_ = localStorage;
 const update: Partial<Record<string, (event: StorageEvent) => void>> = {};
@@ -413,18 +426,18 @@ const parseSecure = (() => {
 setTimeout(() => {
   Object.keys(localStorage_).forEach(key => {
     if (typeof localStorage_[key] !== 'string' || (!key.startsWith(prefix) && !key.startsWith(sequrePrefix))) return;
-    const secTs = +localStorage_[key].match(expMatcherReg)?.[1]!;
+    const secTsStr = localStorage_[key].match(expMatcherReg)?.[1];
 
-    if (!secTs || secTs * 1000 - Date.now() > 24 * 60 * 60 * 1000) return;
+    if (!secTsStr || +secTsStr * 1000 - Date.now() > 24 * 60 * 60 * 1000) return;
 
     const jsonValue = parseSecure(localStorage_[key], 0);
 
-    if (!Array.isArray(jsonValue) || jsonValue[1] == null || !('exp' in jsonValue[1]) || jsonValue[1].exp !== secTs)
+    if (!Array.isArray(jsonValue) || jsonValue[1] == null || !('exp' in jsonValue[1]) || jsonValue[1].exp !== secTsStr)
       return;
 
     initResetTimeouts[key] = setTimeout(() => {
       if (registeredAtoms[key]) registeredAtoms[key].reset();
       else delete localStorage_[key];
-    }, secTs * 1000 - Date.now());
+    }, +secTsStr * 1000 - Date.now());
   });
 }, 1000);

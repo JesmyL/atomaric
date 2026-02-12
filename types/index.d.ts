@@ -1,14 +1,16 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useSyncExternalStore } from 'react';
-import { AtomArrayDoActions } from '../src/do.classes/Array';
-import { AtomBooleanDoActions } from '../src/do.classes/Boolean';
-import { AtomMapDoActions } from '../src/do.classes/Map';
-import { AtomNumberDoActions } from '../src/do.classes/Number';
-import { AtomObjectDoActions } from '../src/do.classes/Object';
-import { AtomSetDoActions } from '../src/do.classes/Set';
+import { IAtomArrayDoActions } from './do.classes.model/IArray';
+import { IAtomBooleanDoActions } from './do.classes.model/IBoolean';
+import { IAtomMapDoActions } from './do.classes.model/IMap';
+import { IAtomNumberDoActions } from './do.classes.model/INumber';
+import { IAtomObjectDoActions } from './do.classes.model/IObject';
+import { IAtomSetDoActions } from './do.classes.model/ISet';
 import { Path, PathValue, PathValueDonor } from './paths';
 
 export type AtomSecureLevel = 0 | 1 | 2 | 3;
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface Register {}
 
 export type ObjectActionsSetDeepPartialSeparator = Register extends {
@@ -21,7 +23,7 @@ type Sunscriber<Value> = (value: Value) => void;
 
 export type AtomStoreKey = `${string}${string}:${string}${string}`;
 
-export type AtomOptions<Value, Actions extends Record<string, Function> = {}> = {
+export type AtomOptions<Value, Actions extends Record<string, AnyFunc> = Record<string, AnyFunc>> = {
   /** **default: true** */
   warnOnDuplicateStoreKey?: boolean;
   /** will update value if localStorage value is changed
@@ -78,20 +80,20 @@ export type ObjectActionsSetDeepPartialDoAction<Value> = <
 ) => void;
 
 export type DefaultActions<Value> = Value extends Set<infer Val>
-  ? AtomSetDoActions<Val>
+  ? IAtomSetDoActions<Val>
   : Value extends Map<infer Key, infer Val>
-  ? AtomMapDoActions<Value, Key, Val>
+  ? IAtomMapDoActions<Value, Key, Val>
   : Value extends boolean
-  ? AtomBooleanDoActions
+  ? IAtomBooleanDoActions
   : Value extends (infer Val)[]
-  ? AtomArrayDoActions<Val>
+  ? IAtomArrayDoActions<Val>
   : Value extends number
-  ? AtomNumberDoActions
+  ? IAtomNumberDoActions
   : Value extends object
-  ? AtomObjectDoActions<Value>
-  : {};
+  ? IAtomObjectDoActions<Value>
+  : object;
 
-declare class Atom<Value, Actions extends Record<string, Function> = {}> {
+declare class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string, AnyFunc>> {
   constructor(initialValue: Value | (() => Value), storeKeyOrOptions: StoreKeyOrOptions<Value, Actions> | undefined);
 
   /** initial value */
@@ -122,15 +124,15 @@ export function useAtomSetDeferred<Value>(atom: Atom<Value>): AtomSetDeferredMet
 export function useAtomGet<Value>(atom: Atom<Value>): () => Value;
 
 /** get your custom actions */
-export function useAtomDo<Value, Actions extends Record<string, Function> = {}>(
+export function useAtomDo<Value, Actions extends Record<string, AnyFunc> = Record<string, AnyFunc>>(
   atom: Atom<Value, Actions>,
 ): Actions & DefaultActions<Value>;
 
-export type StoreKeyOrOptions<Value, Actions extends Record<string, Function> = {}> =
+export type StoreKeyOrOptions<Value, Actions extends Record<string, AnyFunc> = Record<string, AnyFunc>> =
   | AtomStoreKey
   | AtomOptions<Value, Actions>;
 
-export function atom<Value, Actions extends Record<string, Function> = {}>(
+export function atom<Value, Actions extends Record<string, AnyFunc> = Record<string, AnyFunc>>(
   value: Value | (() => Value),
   storeKeyOrOptions?: StoreKeyOrOptions<Value, Actions>,
 ): Atom<Value, Actions>;

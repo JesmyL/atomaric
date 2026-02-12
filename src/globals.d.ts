@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { knownStameskaIconNames } from 'shared/values/index/known-icons';
 
 enum NotANumber {
@@ -15,6 +16,7 @@ declare global {
   type numberStr = `${'-' | ''}${intStr}${`.${number}` | ''}`;
   type StringBySlash = `${string}/${string}`;
   type func = (arg: unknown, ...args: unknown[]) => unknown | void;
+  type AnyFunc = (...args: any[]) => any;
 
   type KRecord<Key extends string | number, Value> = (Record<`${Key}`, Value> | Record<Key, Value>) &
     Record<`${Key}` | Key, Value>;

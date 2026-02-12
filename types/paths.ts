@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export type Path<T, Sep extends string> = T extends any ? PathInternal<T, Sep> : never;
 export type PathValue<T, Sep extends string, ValuePath extends Path<T, Sep>> = TPathValue<T, Sep, ValuePath>;
 

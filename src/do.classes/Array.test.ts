@@ -38,7 +38,7 @@ describe('Array', () => {
 
     expect(testAtom.get()).toEqual([1, 2, 5, 2, 5, 5, 5, 5, 1, null, '', '#', 0, 8]);
 
-    testAtom.do.remove(5);
+    testAtom.do.removeFirst(5);
     await wait();
 
     expect(testAtom.get()).toEqual([1, 2, 2, 5, 5, 5, 5, 1, null, '', '#', 0, 8]);

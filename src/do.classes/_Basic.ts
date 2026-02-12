@@ -1,5 +1,5 @@
 export class AtomDoActionsBasic {
-  constructor(actions: Record<string, Function> | nil) {
+  constructor(actions: Record<string, AnyFunc> | nil) {
     if (actions)
       return new Proxy(this, {
         get: (self, p) => {

@@ -64,4 +64,22 @@ describe('Object', () => {
     expect(testAtom.get().a.b.c).not.toEqual(init.a.b.c);
     expect(testAtom.get().a.h.i).toEqual(init.a.h.i);
   });
+
+  test('do.update() with undefined nested props', async () => {
+    const init: { a?: { b?: { c?: { d: { e: string } }; f: { g: object } }; h: { i: { j: object } } } } = {};
+    const testAtom = atom(init);
+
+    testAtom.do.update(obj => {
+      obj.a ??= { h: { i: { j: {} } } };
+      obj.a.b ??= { f: { g: {} } };
+      obj.a.b.c ??= { d: { e: '' } };
+      obj.a.b.c.d.e = 'eE';
+    });
+
+    await wait();
+
+    expect(testAtom.get().a?.b?.c?.d.e).toEqual('eE');
+    expect(testAtom.get().a?.h.i.j).toEqual({});
+    expect(testAtom.get().a?.h.i.j).not.toEqual({ w: 0 });
+  });
 });
