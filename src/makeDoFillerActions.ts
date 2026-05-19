@@ -1,4 +1,4 @@
-import { AtomOptions, AtomStoreKey } from '../types';
+import { AtomOptions, AtomStorageKey } from '../types';
 import { Atom } from './class';
 import { AtomDoActionsBasic } from './do.classes/_Basic';
 import { AtomArrayDoActions } from './do.classes/Array';
@@ -11,11 +11,11 @@ import { AtomSetDoActions } from './do.classes/Set';
 export const makeDoFillerActions = <Value, Actions extends Record<string, AnyFunc>>(
   initialValue: Value,
   atom: Atom<Value, Actions>,
-  storeKeyOrOptions: AtomStoreKey | AtomOptions<Value, Actions> | undefined,
+  storageKeyOrOptions: AtomStorageKey | AtomOptions<Value, Actions> | undefined,
 ) => {
   const actions =
-    typeof storeKeyOrOptions === 'object' && storeKeyOrOptions != null && 'do' in storeKeyOrOptions
-      ? storeKeyOrOptions.do(
+    typeof storageKeyOrOptions === 'object' && storageKeyOrOptions != null && 'do' in storageKeyOrOptions
+      ? storageKeyOrOptions.do(
           (value, isPreventSave) => atom.set(value, isPreventSave),
           () => atom.get(),
           atom,

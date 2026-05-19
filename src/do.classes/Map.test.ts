@@ -10,7 +10,7 @@ configureAtomaric({
 describe('Map', () => {
   type Value = number | { asasa: '' };
   const testAtom = atom(new Map<string, Value>(), {
-    storeKey: 'map:test',
+    storageKey: 'map:test',
     do: (set, get) => ({
       filterKeyValues: () => {
         const newMap = new Map();

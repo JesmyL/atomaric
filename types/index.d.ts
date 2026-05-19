@@ -21,11 +21,11 @@ export type ObjectActionsSetDeepPartialSeparator = Register extends {
 
 type Sunscriber<Value> = (value: Value) => void;
 
-export type AtomStoreKey = `${string}${string}:${string}${string}`;
+export type AtomStorageKey = `${string}${string}:${string}${string}`;
 
 export type AtomOptions<Value, Actions extends Record<string, AnyFunc> = Record<string, AnyFunc>> = {
   /** **default: true** */
-  warnOnDuplicateStoreKey?: boolean;
+  warnOnDuplicateStorageKey?: boolean;
   /** will update value if localStorage value is changed
    * **default: true**
    */
@@ -40,10 +40,13 @@ export type AtomOptions<Value, Actions extends Record<string, AnyFunc> = Record<
   unchangable?: true;
   /** return value expire Date */
   exp?: (self: Atom<Value>, isValueWasStoraged: boolean) => Date;
+
+  /** silter setted value */
+  filter?: (newValue: Value, prevValue: Value) => boolean;
 } & (
   | {
       /** save in localStorage by this key */
-      storeKey: AtomStoreKey;
+      storageKey: AtomStorageKey;
       securifyKeyLevel?: AtomSecureLevel;
       securifyValueLevel?: AtomSecureLevel;
     }
@@ -79,22 +82,26 @@ export type ObjectActionsSetDeepPartialDoAction<Value> = <
   separator?: Sep,
 ) => void;
 
-export type DefaultActions<Value> = Value extends Set<infer Val>
-  ? IAtomSetDoActions<Val>
-  : Value extends Map<infer Key, infer Val>
-  ? IAtomMapDoActions<Value, Key, Val>
-  : Value extends boolean
-  ? IAtomBooleanDoActions
-  : Value extends (infer Val)[]
-  ? IAtomArrayDoActions<Val>
-  : Value extends number
-  ? IAtomNumberDoActions
-  : Value extends object
-  ? IAtomObjectDoActions<Value>
-  : object;
+export type DefaultActions<Value> =
+  Value extends Set<infer Val>
+    ? IAtomSetDoActions<Val>
+    : Value extends Map<infer Key, infer Val>
+      ? IAtomMapDoActions<Value, Key, Val>
+      : Value extends boolean
+        ? IAtomBooleanDoActions
+        : Value extends (infer Val)[]
+          ? IAtomArrayDoActions<Val>
+          : Value extends number
+            ? IAtomNumberDoActions
+            : Value extends object
+              ? IAtomObjectDoActions<Value>
+              : object;
 
 declare class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string, AnyFunc>> {
-  constructor(initialValue: Value | (() => Value), storeKeyOrOptions: StoreKeyOrOptions<Value, Actions> | undefined);
+  constructor(
+    initialValue: Value | (() => Value),
+    storageKeyOrOptions: StorageKeyOrOptions<Value, Actions> | undefined,
+  );
 
   /** initial value */
   readonly initialValue: Value;
@@ -128,13 +135,13 @@ export function useAtomDo<Value, Actions extends Record<string, AnyFunc> = Recor
   atom: Atom<Value, Actions>,
 ): Actions & DefaultActions<Value>;
 
-export type StoreKeyOrOptions<Value, Actions extends Record<string, AnyFunc> = Record<string, AnyFunc>> =
-  | AtomStoreKey
+export type StorageKeyOrOptions<Value, Actions extends Record<string, AnyFunc> = Record<string, AnyFunc>> =
+  | AtomStorageKey
   | AtomOptions<Value, Actions>;
 
 export function atom<Value, Actions extends Record<string, AnyFunc> = Record<string, AnyFunc>>(
   value: Value | (() => Value),
-  storeKeyOrOptions?: StoreKeyOrOptions<Value, Actions>,
+  storageKeyOrOptions?: StorageKeyOrOptions<Value, Actions>,
 ): Atom<Value, Actions>;
 
 /** invoke this function before all atom usages */

@@ -35,4 +35,4 @@ export const useAtomDo: typeof useAtomDoType = atom => atom.do;
 
 export const useAtom: typeof useAtomType = atom => [useAtomValue(atom), useAtomSet(atom)];
 
-export const atom: typeof atomType = (value, storeKeyOrOptions) => new Atom(value, storeKeyOrOptions);
+export const atom: typeof atomType = (value, storageKeyOrOptions) => new Atom(value, storageKeyOrOptions);

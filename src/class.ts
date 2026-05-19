@@ -4,7 +4,7 @@ import {
   AtomSecureLevel,
   AtomSetDeferredMethod,
   AtomSetMethod,
-  AtomStoreKey,
+  AtomStorageKey,
   AtomSubscribeMethod,
   Atom as AtomType,
   DefaultActions,
@@ -16,9 +16,10 @@ type Subscriber<Value> = (value: Value) => void;
 
 type Tools = { exp?: number };
 
-export class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string, AnyFunc>>
-  implements AtomType<Value, Actions>
-{
+export class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string, AnyFunc>> implements AtomType<
+  Value,
+  Actions
+> {
   get;
   set: AtomSetMethod<Value>;
   setDeferred: AtomSetDeferredMethod<Value>;
@@ -30,7 +31,7 @@ export class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string
 
   constructor(
     initialValue: Value | (() => Value),
-    storeKeyOrOptions: AtomStoreKey | AtomOptions<Value, Actions> | undefined,
+    storageKeyOrOptions: AtomStorageKey | AtomOptions<Value, Actions> | undefined,
   ) {
     initialValue = typeof initialValue === 'function' ? (initialValue as () => Value)() : initialValue;
 
@@ -41,6 +42,7 @@ export class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string
 
     let isQueueWait = true;
     let lastIsPreventSave = false as boolean | nil;
+    let filterValue: Required<AtomOptions<Value, Actions>>['filter'] = () => true;
 
     let ______current_value_____ = initialValue;
     let debounceTimeout: ReturnType<typeof setTimeout> | number | undefined;
@@ -49,7 +51,7 @@ export class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string
     let tools: Tools | null | undefined = null;
 
     let doFiller = () => {
-      const doActions = makeDoFillerActions<Value, Actions>(initialValue, proxiedSelf, storeKeyOrOptions);
+      const doActions = makeDoFillerActions<Value, Actions>(initialValue, proxiedSelf, storageKeyOrOptions);
       doFiller = () => doActions;
       return doActions;
     };
@@ -74,7 +76,7 @@ export class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string
     const set: typeof this.set = (value, isPreventSave) => {
       const nextValue = typeof value === 'function' ? (value as (value: Value) => Value)(get()) : value;
 
-      if (nextValue === get()) return;
+      if (nextValue === get() || !filterValue(nextValue, get())) return;
 
       updateCurrentValue(nextValue);
       lastIsPreventSave = isPreventSave;
@@ -114,15 +116,15 @@ export class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string
       debounceTimeout = setTimeout(deferredTimeOut, debounceMs, value, isPreventSave);
     };
 
-    if (storeKeyOrOptions == null) return proxiedSelf;
+    if (storageKeyOrOptions == null) return proxiedSelf;
 
     ////////////////////////
     //////////////////////// storaged value
     ////////////////////////
 
-    let storeKey = null;
+    let storageKey = null;
     let exp = null;
-    let warnOnDuplicateStoreKey = true;
+    let warnOnDuplicateStorageKey = true;
     let listenStorageChanges = true;
     let isUnchangable = false;
     let securifyKeyLevel: AtomSecureLevel = 0;
@@ -133,8 +135,8 @@ export class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string
       initialValue instanceof Set
         ? strValue => new Set(strValue)
         : initialValue instanceof Map
-        ? strValue => new Map(strValue)
-        : val => val;
+          ? strValue => new Map(strValue)
+          : val => val;
 
     let zipValue: AtomOptions<Value, Actions>['zipValue'] =
       initialValue instanceof Set
@@ -145,47 +147,52 @@ export class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string
             throw 'The value is not Set instance';
           }
         : initialValue instanceof Map
-        ? val => {
-            if (val instanceof Map) {
-              const arr: [unknown, unknown][] = [];
+          ? val => {
+              if (val instanceof Map) {
+                const arr: [unknown, unknown][] = [];
 
-              val.forEach((value, key) => arr.push([key, value]));
+                val.forEach((value, key) => arr.push([key, value]));
 
-              return arr;
+                return arr;
+              }
+
+              console.error(val);
+              throw 'The value is not Set instance';
             }
+          : val => val;
 
-            console.error(val);
-            throw 'The value is not Set instance';
-          }
-        : val => val;
+    if (typeof storageKeyOrOptions === 'string') {
+      storageKey = storageKeyOrOptions;
+    } else {
+      filterValue = storageKeyOrOptions.filter ?? filterValue;
 
-    if (typeof storeKeyOrOptions === 'string') {
-      storeKey = storeKeyOrOptions;
-    } else if ('storeKey' in storeKeyOrOptions) {
-      warnOnDuplicateStoreKey = storeKeyOrOptions.warnOnDuplicateStoreKey ?? warnOnDuplicateStoreKey;
-      listenStorageChanges = storeKeyOrOptions.listenStorageChanges ?? listenStorageChanges;
-      storeKey = storeKeyOrOptions.storeKey;
+      if ('storageKey' in storageKeyOrOptions) {
+        warnOnDuplicateStorageKey = storageKeyOrOptions.warnOnDuplicateStorageKey ?? warnOnDuplicateStorageKey;
+        listenStorageChanges = storageKeyOrOptions.listenStorageChanges ?? listenStorageChanges;
+        storageKey = storageKeyOrOptions.storageKey;
 
-      unzipValue = storeKeyOrOptions.unzipValue ?? unzipValue;
-      zipValue = storeKeyOrOptions.zipValue ?? zipValue;
-      isUnchangable = storeKeyOrOptions.unchangable ?? isUnchangable;
-      securifyKeyLevel = storeKeyOrOptions.securifyKeyLevel ?? configuredOptions.securifyKeyLevel ?? securifyKeyLevel;
-      securifyValueLevel =
-        storeKeyOrOptions.securifyValueLevel ?? configuredOptions.securifyValueLevel ?? securifyValueLevel;
-      exp = storeKeyOrOptions.exp ?? exp;
-    } else return proxiedSelf;
+        unzipValue = storageKeyOrOptions.unzipValue ?? unzipValue;
+        zipValue = storageKeyOrOptions.zipValue ?? zipValue;
+        isUnchangable = storageKeyOrOptions.unchangable ?? isUnchangable;
+        securifyKeyLevel =
+          storageKeyOrOptions.securifyKeyLevel ?? configuredOptions.securifyKeyLevel ?? securifyKeyLevel;
+        securifyValueLevel =
+          storageKeyOrOptions.securifyValueLevel ?? configuredOptions.securifyValueLevel ?? securifyValueLevel;
+        exp = storageKeyOrOptions.exp ?? exp;
+      } else return proxiedSelf;
+    }
 
-    const keyPostfix = securifyKeyLevel ? stringifySecure(storeKey, securifyKeyLevel) : storeKey;
+    const keyPostfix = securifyKeyLevel ? stringifySecure(storageKey, securifyKeyLevel) : storageKey;
     const key = `${securifyValueLevel ? sequrePrefix : prefix}${keyPostfix}`;
 
     if (securifyKeyLevel) {
-      const unsequreKey = `${prefix}${storeKey}`;
+      const unsequreKey = `${prefix}${storageKey}`;
       if (unsequreKey in localStorage_) {
         localStorage_[key] = localStorage_[unsequreKey];
         delete localStorage_[unsequreKey];
       }
     } else {
-      const sequreKey = `${prefix}${stringifySecure(storeKey, securifyKeyLevel)}`;
+      const sequreKey = `${prefix}${stringifySecure(storageKey, securifyKeyLevel)}`;
       if (sequreKey in localStorage_) {
         localStorage_[key] = localStorage_[sequreKey];
         delete localStorage_[sequreKey];
@@ -225,7 +232,7 @@ export class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string
       };
 
       if (unsecureKey in localStorage_) {
-        const secureKey = `${prefix}${stringifySecure(storeKey, securifyKeyLevel)}`;
+        const secureKey = `${prefix}${stringifySecure(storageKey, securifyKeyLevel)}`;
 
         try {
           localStorage_[secureKey] = stringifyValue(unzipValue(parseSecure(localStorage_[unsecureKey], 0)[0]));
@@ -255,9 +262,9 @@ export class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string
     let isInactualValue = true;
     registeredAtoms[key] = proxiedSelf;
 
-    if (localStorage_[`atom/${storeKey}`]) {
-      localStorage_[key] ||= `[${localStorage_[`atom/${storeKey}`]}]`;
-      delete localStorage_[`atom/${storeKey}`];
+    if (localStorage_[`atom/${storageKey}`]) {
+      localStorage_[key] ||= `[${localStorage_[`atom/${storageKey}`]}]`;
+      delete localStorage_[`atom/${storageKey}`];
     }
 
     get = () => {
@@ -288,7 +295,7 @@ export class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string
       set(initialValue, true);
     };
 
-    if (warnOnDuplicateStoreKey && update[key] !== undefined) console.warn('Duplicate Atom key', storeKey);
+    if (warnOnDuplicateStorageKey && update[key] !== undefined) console.warn('Duplicate Atom key', storageKey);
 
     if (listenStorageChanges) {
       if (isUnchangable) {
@@ -435,9 +442,12 @@ setTimeout(() => {
     if (!Array.isArray(jsonValue) || jsonValue[1] == null || !('exp' in jsonValue[1]) || jsonValue[1].exp !== secTsStr)
       return;
 
-    initResetTimeouts[key] = setTimeout(() => {
-      if (registeredAtoms[key]) registeredAtoms[key].reset();
-      else delete localStorage_[key];
-    }, +secTsStr * 1000 - Date.now());
+    initResetTimeouts[key] = setTimeout(
+      () => {
+        if (registeredAtoms[key]) registeredAtoms[key].reset();
+        else delete localStorage_[key];
+      },
+      +secTsStr * 1000 - Date.now(),
+    );
   });
 }, 1000);

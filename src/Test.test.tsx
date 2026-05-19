@@ -36,25 +36,25 @@ describe('Atom', () => {
   });
 
   test('save in localStorage', async () => {
-    const storeKey = 'just:test';
-    delete localStorage[makeFullKey(storeKey)];
+    const storageKey = 'just:test';
+    delete localStorage[makeFullKey(storageKey)];
 
-    const testAtom = atom(new Set<number>(), storeKey);
+    const testAtom = atom(new Set<number>(), storageKey);
 
     testAtom.do.add(1);
 
     await wait();
 
-    expect(localStorage[makeFullKey(storeKey)]).toBe('[[1]]');
+    expect(localStorage[makeFullKey(storageKey)]).toBe('[[1]]');
   });
 
   test('save in localStorage with expire time', async () => {
-    const storeKey = 'just:test-with-exp';
-    delete localStorage[makeFullKey(storeKey)];
+    const storageKey = 'just:test-with-exp';
+    delete localStorage[makeFullKey(storageKey)];
     const date = new Date(Date.now() + 2 * 1000);
 
     const testAtom = atom(new Set<number>(), {
-      storeKey,
+      storageKey,
       exp: () => date,
     });
 
@@ -63,21 +63,21 @@ describe('Atom', () => {
     const storagedVal = `[[1],{"exp":${Math.trunc(date.getTime() / 1000)}}]`;
 
     await wait();
-    expect(localStorage[makeFullKey(storeKey)]).toBe(storagedVal);
+    expect(localStorage[makeFullKey(storageKey)]).toBe(storagedVal);
 
     await wait(1100);
-    expect(localStorage[makeFullKey(storeKey)]).toBe(storagedVal);
+    expect(localStorage[makeFullKey(storageKey)]).toBe(storagedVal);
 
     await wait(2100);
-    expect(localStorage[makeFullKey(storeKey)]).toBe(undefined);
+    expect(localStorage[makeFullKey(storageKey)]).toBe(undefined);
   });
 
   test('value zipper', async () => {
-    const storeKey = 'just:test-zipper';
-    delete localStorage[makeFullKey(storeKey)];
+    const storageKey = 'just:test-zipper';
+    delete localStorage[makeFullKey(storageKey)];
 
     const testAtom = atom(new Set<number>(), {
-      storeKey,
+      storageKey,
       zipValue: value => ({ $: Array.from(value) }),
       unzipValue: value => new Set(value.$),
     });
@@ -86,7 +86,7 @@ describe('Atom', () => {
 
     await wait();
 
-    expect(localStorage[makeFullKey(storeKey)]).toBe(`[{"$":[1]}]`);
+    expect(localStorage[makeFullKey(storageKey)]).toBe(`[{"$":[1]}]`);
     expect(Array.from(testAtom.get())).toStrictEqual([1]);
   });
 
@@ -111,7 +111,7 @@ describe('Atom', () => {
 
   test('secure key', async () => {
     const testAtom = atom('', {
-      storeKey: '1:1',
+      storageKey: '1:1',
       securifyKeyLevel: 2,
     });
 
@@ -126,7 +126,7 @@ describe('Atom', () => {
 
   test('secure value', async () => {
     const testAtom = atom('', {
-      storeKey: '1:1',
+      storageKey: '1:1',
       securifyKeyLevel: 2,
       securifyValueLevel: 2,
     });
@@ -138,5 +138,30 @@ describe('Atom', () => {
     expect(localStorage[makeFullSecureKey('1:1')]).toEqual(undefined);
     expect(localStorage[makeFullSecureKey('JTIyMtoXjtiY')]).toEqual('["JTVCJtiYmtoXjtiYjtve"]');
     expect(testAtom.get()).toEqual('1:1');
+  });
+
+  test('filter() values', async () => {
+    const filteredNumAtom = atom(0, {
+      do: () => ({}),
+      filter: val => val >= 10 && val < 20,
+    });
+
+    filteredNumAtom.do.increment();
+
+    await wait();
+
+    expect(filteredNumAtom.get()).toEqual(0);
+
+    filteredNumAtom.set(14);
+
+    await wait();
+
+    expect(filteredNumAtom.get()).toEqual(14);
+
+    filteredNumAtom.set(24);
+
+    await wait();
+
+    expect(filteredNumAtom.get()).toEqual(14);
   });
 });

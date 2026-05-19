@@ -10,7 +10,7 @@ configureAtomaric({
 describe('Set', () => {
   test('do actions', async () => {
     const testAtom = atom(new Set<string>(), {
-      storeKey: 'set:test',
+      storageKey: 'set:test',
       do: (set, get) => ({
         filterValues: () => {
           const array = Array.from(get());

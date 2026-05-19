@@ -14,7 +14,7 @@ createRoot(document.getElementById('root')!).render(
 );
 
 const testAtom = atom('', {
-  storeKey: '1:1',
+  storageKey: '1:1',
   securifyKeyLevel: 2,
   securifyValueLevel: 2,
 });
