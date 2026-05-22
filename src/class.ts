@@ -42,7 +42,7 @@ export class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string
 
     let isQueueWait = true;
     let lastIsPreventSave = false as boolean | nil;
-    let filterValue: Required<AtomOptions<Value, Actions>>['filter'] = () => true;
+    let mapValue: Required<AtomOptions<Value, Actions>>['map'] = val => val;
 
     let ______current_value_____ = initialValue;
     let debounceTimeout: ReturnType<typeof setTimeout> | number | undefined;
@@ -74,9 +74,10 @@ export class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string
     };
 
     const set: typeof this.set = (value, isPreventSave) => {
-      const nextValue = typeof value === 'function' ? (value as (value: Value) => Value)(get()) : value;
+      let nextValue = typeof value === 'function' ? (value as (value: Value) => Value)(get()) : value;
+      nextValue = mapValue(nextValue, get());
 
-      if (nextValue === get() || !filterValue(nextValue, get())) return;
+      if (nextValue === get()) return;
 
       updateCurrentValue(nextValue);
       lastIsPreventSave = isPreventSave;
@@ -164,7 +165,7 @@ export class Atom<Value, Actions extends Record<string, AnyFunc> = Record<string
     if (typeof storageKeyOrOptions === 'string') {
       storageKey = storageKeyOrOptions;
     } else {
-      filterValue = storageKeyOrOptions.filter ?? filterValue;
+      mapValue = storageKeyOrOptions.map ?? mapValue;
 
       if ('storageKey' in storageKeyOrOptions) {
         warnOnDuplicateStorageKey = storageKeyOrOptions.warnOnDuplicateStorageKey ?? warnOnDuplicateStorageKey;

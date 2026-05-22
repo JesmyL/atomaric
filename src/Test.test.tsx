@@ -140,10 +140,10 @@ describe('Atom', () => {
     expect(testAtom.get()).toEqual('1:1');
   });
 
-  test('filter() values', async () => {
+  test('map() values', async () => {
     const filteredNumAtom = atom(0, {
       do: () => ({}),
-      filter: val => val >= 10 && val < 20,
+      map: (val, prev) => (val >= 10 && val < 20 ? val : prev),
     });
 
     filteredNumAtom.do.increment();

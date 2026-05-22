@@ -41,8 +41,8 @@ export type AtomOptions<Value, Actions extends Record<string, AnyFunc> = Record<
   /** return value expire Date */
   exp?: (self: Atom<Value>, isValueWasStoraged: boolean) => Date;
 
-  /** silter setted value */
-  filter?: (newValue: Value, prevValue: Value) => boolean;
+  /** map setted value */
+  map?: (newValue: Value, prevValue: Value) => Value;
 } & (
   | {
       /** save in localStorage by this key */
